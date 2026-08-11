@@ -1,0 +1,12 @@
+version: "Apple Swift version 6.1.2 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)"
+options: "c261723205cebe258b9a5b2add853eb98a9f062647296205b8fcf531276f727a"
+build_start_time: [1786229149, 755035000]
+build_end_time: [1786229159, 973502000]
+inputs:
+  "/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/AegisClient.swift": [1786226568, 343669674]
+  "/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/AegisMenuApp.swift": [1786225121, 566506746]
+  "/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/AegisStore.swift": [1786226568, 482784473]
+  "/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/DashboardView.swift": [1786229143, 607632490]
+  "/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/LedgerView.swift": [1786225511, 233013924]
+  "/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/MenuBarView.swift": [1786229143, 606914789]
+  "/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/Models.swift": [1786229143, 607589280]

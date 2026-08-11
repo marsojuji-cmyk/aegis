@@ -1,0 +1,66 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "AegisMenu-x86_64-apple-macosx15.0-release.exe": ["<AegisMenu-x86_64-apple-macosx15.0-release.exe>"]
+  "AegisMenu-x86_64-apple-macosx15.0-release.module": ["<AegisMenu-x86_64-apple-macosx15.0-release.module>"]
+  "PackageStructure": ["<PackageStructure>"]
+  "main": ["<AegisMenu-x86_64-apple-macosx15.0-release.exe>","<AegisMenu-x86_64-apple-macosx15.0-release.module>"]
+  "test": ["<AegisMenu-x86_64-apple-macosx15.0-release.exe>","<AegisMenu-x86_64-apple-macosx15.0-release.module>"]
+default: "main"
+nodes:
+  "/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+commands:
+  "/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/AegisClient.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/AegisMenuApp.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/AegisStore.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/DashboardView.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/LedgerView.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/MenuBarView.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/Models.swift"]
+    outputs: ["/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/sources"]
+    description: "Write auxiliary file /Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/sources"
+
+  "/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisClient.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisMenuApp.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisStore.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/DashboardView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/LedgerView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/MenuBarView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/Models.swift.o"]
+    outputs: ["/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.product/Objects.LinkFileList"
+
+  "/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"]
+    outputs: ["/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+
+  "<AegisMenu-x86_64-apple-macosx15.0-release.exe>":
+    tool: phony
+    inputs: ["/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu"]
+    outputs: ["<AegisMenu-x86_64-apple-macosx15.0-release.exe>"]
+
+  "<AegisMenu-x86_64-apple-macosx15.0-release.module>":
+    tool: phony
+    inputs: ["/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisClient.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisMenuApp.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisStore.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/DashboardView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/LedgerView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/MenuBarView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/Models.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/Modules/AegisMenu.swiftmodule"]
+    outputs: ["<AegisMenu-x86_64-apple-macosx15.0-release.module>"]
+
+  "C.AegisMenu-x86_64-apple-macosx15.0-release.exe":
+    tool: shell
+    inputs: ["/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisClient.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisMenuApp.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisStore.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/DashboardView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/LedgerView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/MenuBarView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/Models.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.product/Objects.LinkFileList"]
+    outputs: ["/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu"]
+    description: "Linking ./.build/x86_64-apple-macosx/release/AegisMenu"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-L","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release","-o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu","-module-name","AegisMenu","-Xlinker","-no_warn_duplicate_libraries","-emit-executable","-Xlinker","-dead_strip","-Xlinker","-alias","-Xlinker","_AegisMenu_main","-Xlinker","_main","-Xlinker","-rpath","-Xlinker","@loader_path","@/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.product/Objects.LinkFileList","-target","x86_64-apple-macosx14.0","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g"]
+
+  "C.AegisMenu-x86_64-apple-macosx15.0-release.module":
+    tool: shell
+    inputs: ["/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/AegisClient.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/AegisMenuApp.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/AegisStore.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/DashboardView.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/LedgerView.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/MenuBarView.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/Models.swift","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/sources"]
+    outputs: ["/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisClient.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisMenuApp.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/AegisStore.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/DashboardView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/LedgerView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/MenuBarView.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/Models.swift.o","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/Modules/AegisMenu.swiftmodule"]
+    description: "Compiling Swift Module 'AegisMenu' (7 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","AegisMenu","-emit-dependencies","-emit-module","-emit-module-path","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/Modules/AegisMenu.swiftmodule","-output-file-map","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/output-file-map.json","-whole-module-optimization","-num-threads","12","-c","@/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/AegisMenu.build/sources","-I","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/Modules","-target","x86_64-apple-macosx14.0","-O","-j12","-DSWIFT_PACKAGE","-module-cache-path","/Users/a100/Projects/aegis/apps/AegisMenu/.build/x86_64-apple-macosx/release/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","AegisMenu_main","-swift-version","5","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","aegismenu"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/a100/Projects/aegis/apps/AegisMenu/Sources/AegisMenu/","/Users/a100/Projects/aegis/apps/AegisMenu/Package.swift","/Users/a100/Projects/aegis/apps/AegisMenu/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+

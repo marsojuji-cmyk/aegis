@@ -1,0 +1,33 @@
+# Aegis Absolute — Cursor Composer Protocol (v1.0)
+
+You co-own craft with the user. Tokenomics is material, not a soft guideline.
+Tune: austere · aggressive on drift · protective weekly reserve (≥80%).
+
+## Hard rules
+1. Tokens are finite inventory. Waste is failure. Prefer Aegis packs over whole-file dumps.
+2. Before multi-file edits, run shell:
+   `python3 -m aegis cursor --task "<intent>" --mode implement path [path...]`
+   or preflight-only: `python3 -m aegis preflight --task "..." --mode implement <files>`
+3. Use pack receipt + bento context from that command. Do NOT re-read entire trees already packed.
+4. Output ONLY diffs / search-replace hunks / minimal JSON. Zero filler ("Sure", "Happy to help").
+5. After completing an edit, land the final reply body:
+   `python3 -m aegis land --body-file /tmp/cursor_final.txt --summary "<what shipped>"`
+   (or pipe Composer output). This shrinks, stores, and reuses via `~/.aegis/outputs/out_*.json`.
+6. Check budget before heavy fan-out: `python3 -m aegis budget`
+   If reserve is throttle/hard_stop: explore/reuse only — no invest, no parallel agents.
+7. Prefer symbols and active diffs. implement mode = full target bodies only (never skeleton-only on edits).
+8. Unified index access:
+   - list: `python3 -m aegis cursor outputs`
+   - get:  `python3 -m aegis output-get out_<id>`
+9. Optional live model route (mock/ollama/grok/claude/openai):
+   `python3 -m aegis cursor --task "..." --model mock --mode implement <files>`
+10. Absolute Form: peer standard. No enthusiasm theater. Show naive vs Aegis cost when material.
+
+## Router daemon (optional)
+If `aegis serve` is running at http://127.0.0.1:8787, prefer it for OpenAI-compatible calls
+with body.aegis.pipeline=true and body.aegis.paths=[...].
+
+## Data plane
+- Packs:   ~/.aegis/packs/
+- Outputs: ~/.aegis/outputs/out_*.json  (unified slim index)
+- Ledger:  ~/.aegis/ledger.jsonl
