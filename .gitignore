@@ -13,3 +13,4 @@ venv/
 .DS_Store
 *.log
 .aegis-local/
+apps/AegisMenu/.build/
