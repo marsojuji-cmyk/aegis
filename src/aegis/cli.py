@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 def _ensure_seeded() -> None:
@@ -500,19 +502,266 @@ def _cmd_context(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load_source_manifest(path_text: str) -> Tuple[Dict[str, str], Set[str]]:
+    """Load a small, auditable task-input manifest without copying its evidence."""
+    path = Path(path_text).expanduser().resolve()
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("source manifest must be a JSON object")
+
+    required_text = ("task_id", "owner", "authority", "rollback")
+    missing = [key for key in required_text if not isinstance(payload.get(key), str) or not payload[key].strip()]
+    if missing:
+        raise ValueError("source manifest needs non-empty " + ", ".join(missing))
+
+    inputs = payload.get("inputs")
+    if not isinstance(inputs, list) or not inputs:
+        raise ValueError("source manifest needs a non-empty inputs list")
+    for index, item in enumerate(inputs):
+        if not isinstance(item, dict) or any(
+            not isinstance(item.get(key), str) or not item[key].strip()
+            for key in ("path", "kind", "status")
+        ):
+            raise ValueError(
+                f"source manifest input {index} needs non-empty path, kind, and status"
+            )
+
+    excluded = payload.get("excluded", [])
+    if not isinstance(excluded, list) or not all(isinstance(item, str) for item in excluded):
+        raise ValueError("source manifest excluded must be a list of strings")
+
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    artifact = {
+        "kind": "source_manifest",
+        "path": str(path),
+        "sha256": hashlib.sha256(canonical).hexdigest(),
+        "task_id": payload["task_id"],
+    }
+    normalized_paths = [str(Path(item["path"]).expanduser().resolve()) for item in inputs]
+    approved_paths = set(normalized_paths)
+    if len(approved_paths) != len(normalized_paths):
+        raise ValueError("source manifest must not contain duplicate input paths")
+    missing_paths = sorted(path for path in approved_paths if not Path(path).is_file())
+    if missing_paths:
+        raise ValueError("source manifest input paths must be existing files: " + ", ".join(missing_paths))
+    return artifact, approved_paths
+
+
+def _cmd_continuity(args: argparse.Namespace) -> int:
+    """Default continuity entry/exit for a long code task."""
+    from aegis.context_governor import persist_capsule, state_capsule
+
+    if args.continuity_action == "checkpoint":
+        capsule = state_capsule(
+            objective=args.objective,
+            constraints=args.constraint,
+            decisions=args.decision,
+            verified=args.verified,
+            current_defect=args.defect,
+            next_action=args.next_action,
+            mission=args.mission,
+        )
+        path = persist_capsule(capsule)
+        out = {"capsule": capsule, "path": str(path)}
+        if capsule.get("drift_status"):
+            out["drift_status"] = capsule["drift_status"]
+            out["drift_score"] = capsule["drift_score"]
+        
+        print(json.dumps(out, indent=2))
+        if capsule.get("drift_status") == "quarantine":
+            print(f"aegis continuity checkpoint: quarantine (drift score {capsule.get('drift_score')})", file=sys.stderr)
+            return 3
+        return 0
+
+    if not args.paths:
+        print("aegis continuity start: need code paths", file=sys.stderr)
+        return 2
+    source_manifest = None
+    if args.source_manifest:
+        try:
+            source_manifest, approved_paths = _load_source_manifest(args.source_manifest)
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            print(f"aegis continuity start: invalid source manifest: {exc}", file=sys.stderr)
+            return 2
+        unapproved = [path for path in args.paths if str(Path(path).expanduser().resolve()) not in approved_paths]
+        if unapproved:
+            print(
+                "aegis continuity start: source manifest does not approve "
+                + ", ".join(unapproved),
+                file=sys.stderr,
+            )
+            return 2
+    from aegis.cursor_bridge import cursor_context
+
+    ctx = cursor_context(
+        task=args.task, paths=args.paths, mode=args.mode,
+        targets=list(args.target or []),
+    )
+    artifacts = ([{"kind": "pack", "id": ctx.get("pack_id", "")}]
+                 if ctx.get("pack_id") else [])
+    if source_manifest:
+        artifacts.append(source_manifest)
+    constraints = ["Use only the attached JIT pack; do not replay broad history."]
+    if source_manifest:
+        constraints.append("Use only sources approved by the attached source manifest.")
+    capsule = state_capsule(
+        objective=args.task,
+        constraints=constraints,
+        artifacts=artifacts,
+        current_defect="Task in progress; claims remain provisional until checkpointed.",
+        next_action="Implement from the pack, verify, then run aegis continuity checkpoint.",
+        verification_status="provisional",
+        mission=args.mission,
+    )
+    path = persist_capsule(capsule)
+    out = {"continuity": "started", "context": ctx, "capsule": capsule,
+           "capsule_path": str(path), "source_manifest": source_manifest}
+    if args.json:
+        print(json.dumps(out, indent=2, ensure_ascii=False))
+    else:
+        print(ctx["composer_block"])
+        print(f"\n# continuity capsule → {path}")
+        print("# next: implement; verify; aegis continuity checkpoint --objective ... --next-action ...")
+    return 0 if ctx.get("ok") else 1
+
+
 def _cmd_outcome(args: argparse.Namespace) -> int:
     from aegis.outcomes import outcome_report, record_outcome
 
     if args.outcome_action == "report":
-        print(json.dumps(outcome_report(), indent=2))
+        print(json.dumps(outcome_report(workflow=args.workflow), indent=2))
+        return 0
+    if args.outcome_action == "verify-cost":
+        from aegis.outcomes import cost_verification_report
+        print(json.dumps(cost_verification_report(limit=args.limit), indent=2))
         return 0
     row = record_outcome(
         task_id=args.task_id, variant=args.variant, accepted=args.accepted,
         elapsed_seconds=args.elapsed_seconds, retries=args.retries,
         correction_minutes=args.correction_minutes, cost_usd=args.cost_usd,
+        cost_status=args.cost_status, cost_source=args.cost_source,
+        workflow=args.workflow,
         notes=args.notes,
     )
     print(json.dumps(row, indent=2))
+    return 0
+
+
+def _cmd_guard(args: argparse.Namespace) -> int:
+    from aegis.config import load_config
+    cfg = load_config()
+    
+    if args.guard_action == "status":
+        out = {
+            "guard_active": True,
+            "budget": {
+                "max_tool_calls": cfg.guard_max_tool_calls,
+                "max_velocity_per_min": cfg.guard_max_velocity_calls_per_min,
+            },
+            "signal_preservation": {
+                "max_output_length": cfg.guard_max_output_length,
+                "min_signal_score": cfg.guard_min_signal_score,
+                "trim_strategy": cfg.guard_trim_strategy,
+                "preserve_keywords": [k.strip() for k in cfg.guard_signal_preserve_keywords.split(",") if k.strip()],
+            },
+            "mission_lock": {
+                "allowed_domains": [d.strip() for d in cfg.guard_allowed_domains.split(",") if d.strip()],
+            }
+        }
+        if args.json:
+            print(json.dumps(out, indent=2))
+        else:
+            print("AEGIS GUARD STATUS")
+            print("==================")
+            print("Budget & Velocity:")
+            print(f"  Max tool calls: {out['budget']['max_tool_calls']}")
+            print(f"  Max velocity: {out['budget']['max_velocity_per_min']}/min")
+            print("Signal Preservation:")
+            print(f"  Max output length: {out['signal_preservation']['max_output_length']}")
+            print(f"  Min signal score: {out['signal_preservation']['min_signal_score']}")
+            print(f"  Preserve keywords: {', '.join(out['signal_preservation']['preserve_keywords']) or 'unset'}")
+            print("Mission Lock:")
+            print(f"  Allowed domains: {', '.join(out['mission_lock']['allowed_domains']) or 'unset'}")
+        return 0
+
+    if args.guard_action == "log":
+        # Try persistent log first
+        from pathlib import Path
+        import json as json_lib
+        
+        log_path = Path.home() / ".aegis" / "guard_log.jsonl"
+        
+        if log_path.exists():
+            # Read last N entries from persistent log
+            limit = getattr(args, 'limit', 50)
+            entries = []
+            
+            with open(log_path, "r") as f:
+                for line in f:
+                    if line.strip():
+                        entries.append(json_lib.loads(line))
+            
+            # Show most recent
+            if args.json:
+                print(json_lib.dumps(entries[-limit:], indent=2))
+            else:
+                print("AEGIS GUARD DECISIONS (Persistent Log)")
+                print("=====================")
+                for entry in reversed(entries[-limit:]):
+                    ts = entry.get("timestamp_iso", "")[:19].replace("T", " ")
+                    score_str = f" score={entry['score']:.2f} |" if entry.get('score') else ""
+                    print(f"[{ts}] | {entry['rule']:8} | {entry['action']:7} |{score_str} {entry['reason']}")
+            return 0
+        
+        # Fallback to in-memory (for daemon processes)
+        from aegis.guard import _ACTIVE_GUARD
+        if not _ACTIVE_GUARD:
+            if args.json:
+                print(json_lib.dumps({"error": "no live guard state available"}))
+            else:
+                print("No live guard state available. (AegisGuard runs in-memory and this CLI process is fresh.)")
+            return 1
+            
+        decisions = _ACTIVE_GUARD.state.decisions
+        if args.json:
+            import dataclasses
+            print(json_lib.dumps([dataclasses.asdict(d) for d in decisions], indent=2))
+        else:
+            print("AEGIS GUARD DECISIONS (In-Memory)")
+            print("=====================")
+            import datetime
+            for d in decisions:
+                dt = datetime.datetime.fromtimestamp(d.timestamp, tz=datetime.timezone.utc).isoformat()
+                score_str = f" score={d.score:.2f} |" if d.score is not None else ""
+                print(f"[{dt}] | {d.rule} | {d.action} |{score_str} {d.reason}")
+        return 0
+    return 1
+
+
+def _cmd_pilot(args: argparse.Namespace) -> int:
+    from aegis.outcomes import finish_pilot, init_pilot, pilot_status, start_pilot
+
+    try:
+        if args.pilot_action == "init":
+            result = init_pilot(
+                task_id=args.task_id, source_dir=args.source_dir,
+                first_variant=args.first, workspace_root=args.workspace_root or None,
+            )
+        elif args.pilot_action == "start":
+            result = start_pilot(args.task_id, args.variant)
+        elif args.pilot_action == "finish":
+            result = finish_pilot(
+                args.task_id, accepted=args.accepted, retries=args.retries,
+                correction_minutes=args.correction_minutes, notes=args.notes,
+                cost_usd=args.cost_usd, cost_status=args.cost_status,
+                cost_source=args.cost_source,
+            )
+        else:
+            result = pilot_status(args.task_id)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"aegis pilot: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(result, indent=2))
     return 0
 
 
@@ -1769,19 +2018,78 @@ def build_parser() -> argparse.ArgumentParser:
     cx.add_argument("--json", action="store_true")
     cx.set_defaults(func=_cmd_context)
 
+    ct = sub.add_parser("continuity", help="Default start/checkpoint path for long coding tasks")
+    ct_sub = ct.add_subparsers(dest="continuity_action", required=True)
+    ct_start = ct_sub.add_parser("start", help="Pack code and write a provisional continuity receipt")
+    ct_start.add_argument("--task", required=True)
+    ct_start.add_argument("--mode", type=_parse_mode, default="implement")
+    ct_start.add_argument("--target", action="append", default=[])
+    ct_start.add_argument("--source-manifest", default="", help="Validated JSON record of approved task inputs")
+    ct_start.add_argument("--mission", default="", help="Original mission objective for drift calculation")
+    ct_start.add_argument("--json", action="store_true")
+    ct_start.add_argument("paths", nargs="+")
+    ct_start.set_defaults(func=_cmd_continuity)
+    ct_checkpoint = ct_sub.add_parser("checkpoint", help="Write verified state for a clean next task")
+    ct_checkpoint.add_argument("--objective", required=True)
+    ct_checkpoint.add_argument("--constraint", action="append", default=[])
+    ct_checkpoint.add_argument("--decision", action="append", default=[])
+    ct_checkpoint.add_argument("--verified", action="append", default=[])
+    ct_checkpoint.add_argument("--defect", default="")
+    ct_checkpoint.add_argument("--next-action", required=True)
+    ct_checkpoint.add_argument("--mission", default="", help="Original mission objective (or carried over if omitted)")
+    ct_checkpoint.set_defaults(func=_cmd_continuity)
+
     oc = sub.add_parser("outcome", help="Record or inspect matched workflow outcomes")
     oc_sub = oc.add_subparsers(dest="outcome_action", required=True)
     oc_add = oc_sub.add_parser("record", help="Append an observed baseline or governed task result")
     oc_add.add_argument("--task-id", required=True)
     oc_add.add_argument("--variant", required=True, choices=("baseline", "governed"))
+    oc_add.add_argument("--workflow", default="production_code_change")
     oc_add.add_argument("--accepted", action=argparse.BooleanOptionalAction, default=True)
     oc_add.add_argument("--elapsed-seconds", type=float, required=True)
     oc_add.add_argument("--retries", type=int, default=0)
     oc_add.add_argument("--correction-minutes", type=float, default=0.0)
-    oc_add.add_argument("--cost-usd", type=float, default=0.0)
+    oc_add.add_argument("--cost-usd", type=float, default=None)
+    oc_add.add_argument(
+        "--cost-status",
+        choices=("unknown", "observed", "verified_zero", "legacy_unknown"),
+        default=None,
+    )
+    oc_add.add_argument("--cost-source", default="")
     oc_add.add_argument("--notes", default="")
     oc_add.set_defaults(func=_cmd_outcome)
-    oc_sub.add_parser("report", help="Read-only matched baseline/governed report").set_defaults(func=_cmd_outcome)
+    oc_report = oc_sub.add_parser("report", help="Read-only matched baseline/governed report")
+    oc_report.add_argument("--workflow", default="production_code_change")
+    oc_report.set_defaults(func=_cmd_outcome)
+    oc_verify = oc_sub.add_parser("verify-cost", help="Verify cost provenance for recent runs")
+    oc_verify.add_argument("--limit", type=int, default=5)
+    oc_verify.set_defaults(func=_cmd_outcome)
+
+    pilot = sub.add_parser("pilot", help="Create and time reproducible matched workflow pairs")
+    pilot_sub = pilot.add_subparsers(dest="pilot_action", required=True)
+    pilot_init = pilot_sub.add_parser("init", help="Create identical baseline and governed copies")
+    pilot_init.add_argument("--task-id", required=True)
+    pilot_init.add_argument("--source-dir", required=True)
+    pilot_init.add_argument("--first", required=True, choices=("baseline", "governed"))
+    pilot_init.add_argument("--workspace-root", default="")
+    pilot_init.set_defaults(func=_cmd_pilot)
+    pilot_start = pilot_sub.add_parser("start", help="Start the next frozen variant timer")
+    pilot_start.add_argument("--task-id", required=True)
+    pilot_start.add_argument("--variant", required=True, choices=("baseline", "governed"))
+    pilot_start.set_defaults(func=_cmd_pilot)
+    pilot_finish = pilot_sub.add_parser("finish", help="Stop the timer and record its outcome")
+    pilot_finish.add_argument("--task-id", required=True)
+    pilot_finish.add_argument("--accepted", action=argparse.BooleanOptionalAction, default=True)
+    pilot_finish.add_argument("--retries", type=int, default=0)
+    pilot_finish.add_argument("--correction-minutes", type=float, default=0.0)
+    pilot_finish.add_argument("--notes", default="")
+    pilot_finish.add_argument("--cost-usd", type=float)
+    pilot_finish.add_argument("--cost-status")
+    pilot_finish.add_argument("--cost-source", default="")
+    pilot_finish.set_defaults(func=_cmd_pilot)
+    pilot_status_parser = pilot_sub.add_parser("status", help="Read durable pilot-pair state")
+    pilot_status_parser.add_argument("--task-id", required=True)
+    pilot_status_parser.set_defaults(func=_cmd_pilot)
 
     o = sub.add_parser("output", help="Activate output lane (profile + ledger out meters)")
     o.add_argument(
@@ -2120,6 +2428,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     au.add_argument("--json", action="store_true")
     au.set_defaults(func=_cmd_audit)
+
+    gd = sub.add_parser("guard", help="Inspect active AEGIS guard policy")
+    gd_sub = gd.add_subparsers(dest="guard_action", required=True)
+    gds = gd_sub.add_parser("status", help="Print static guard thresholds and rules")
+    gds.add_argument("--json", action="store_true")
+    gds.set_defaults(func=_cmd_guard)
+    
+    gdl = gd_sub.add_parser("log", help="Print recent guard decisions from live memory")
+    gdl.add_argument("--json", action="store_true")
+    gdl.set_defaults(func=_cmd_guard)
 
     return p
 

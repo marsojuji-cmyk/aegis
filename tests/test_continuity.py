@@ -61,6 +61,123 @@ def test_cli_continuity(aegis_tmp):
     assert main(["intel", "continuity", "--json"]) == 0
 
 
+def test_continuity_start_records_validated_source_manifest(aegis_tmp, tmp_path, capsys):
+    manifest = tmp_path / "source-manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "task_id": "M01",
+                "owner": "creator",
+                "authority": "local reversible implementation",
+                "inputs": [
+                    {"path": __file__, "kind": "test", "status": "direct"},
+                ],
+                "excluded": ["provider telemetry"],
+                "rollback": "revert the local patch",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert main([
+        "continuity", "start", "--task", "manifest test", "--mode", "implement",
+        "--source-manifest", str(manifest), "--json", __file__,
+    ]) == 0
+    result = json.loads(capsys.readouterr().out)
+    source = result["source_manifest"]
+    assert source["kind"] == "source_manifest"
+    assert source["path"] == str(manifest.resolve())
+    assert source["task_id"] == "M01"
+    assert len(source["sha256"]) == 64
+    assert source in result["capsule"]["artifacts"]
+
+
+def test_continuity_start_rejects_path_not_approved_by_manifest(aegis_tmp, tmp_path, capsys):
+    manifest = tmp_path / "source-manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "task_id": "M01",
+                "owner": "creator",
+                "authority": "local reversible implementation",
+                "inputs": [
+                    {"path": str(manifest), "kind": "record", "status": "direct"},
+                ],
+                "rollback": "revert the local patch",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert main([
+        "continuity", "start", "--task", "manifest test", "--mode", "implement",
+        "--source-manifest", str(manifest), __file__,
+    ]) == 2
+    assert "does not approve" in capsys.readouterr().err
+
+
+def test_continuity_start_rejects_missing_manifest_input(aegis_tmp, tmp_path, capsys):
+    manifest = tmp_path / "source-manifest.json"
+    missing = tmp_path / "missing.py"
+    manifest.write_text(
+        json.dumps(
+            {
+                "task_id": "M03",
+                "owner": "creator",
+                "authority": "local reversible implementation",
+                "inputs": [
+                    {"path": str(missing), "kind": "code", "status": "direct"},
+                ],
+                "rollback": "revert the local patch",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert main([
+        "continuity", "start", "--task", "manifest test", "--mode", "implement",
+        "--source-manifest", str(manifest), __file__,
+    ]) == 2
+    assert "existing files" in capsys.readouterr().err
+
+
+def test_continuity_start_rejects_duplicate_manifest_inputs(aegis_tmp, tmp_path, capsys):
+    manifest = tmp_path / "source-manifest.json"
+    source = str(Path(__file__).resolve())
+    manifest.write_text(
+        json.dumps(
+            {
+                "task_id": "M04",
+                "owner": "creator",
+                "authority": "local reversible implementation",
+                "inputs": [
+                    {"path": source, "kind": "test", "status": "direct"},
+                    {"path": source, "kind": "test", "status": "direct"},
+                ],
+                "rollback": "revert the local patch",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert main([
+        "continuity", "start", "--task", "manifest test", "--mode", "implement",
+        "--source-manifest", str(manifest), __file__,
+    ]) == 2
+    assert "duplicate input paths" in capsys.readouterr().err
+
+
+def test_continuity_start_rejects_incomplete_source_manifest(aegis_tmp, tmp_path, capsys):
+    manifest = tmp_path / "source-manifest.json"
+    manifest.write_text("{}", encoding="utf-8")
+
+    assert main([
+        "continuity", "start", "--task", "manifest test", "--mode", "implement",
+        "--source-manifest", str(manifest), __file__,
+    ]) == 2
+    assert "invalid source manifest" in capsys.readouterr().err
+
+
 def test_embedding_pack_matches_schema(aegis_tmp):
     from aegis.embedding_schema import schema_path, validate_embedding_pack
 

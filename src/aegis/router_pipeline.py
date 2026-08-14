@@ -18,6 +18,7 @@ from aegis.output_store import store_stats
 from aegis.preflight import run_preflight
 from aegis.providers import ProviderSpec, detect_provider, list_providers
 from aegis.router_client import chat_completion
+from aegis.guard import AegisGuard, aegis_protect
 
 
 @dataclass
@@ -203,9 +204,17 @@ def run_pipeline(
             meta=preflight_meta,
         )
 
+    guard = AegisGuard(cfg)
+    protected_chat = aegis_protect(
+        guard=guard,
+        tool_name="chat_completion",
+        mission_scope="model_inference",
+        budget_category="model_calls"
+    )(chat_completion)
+
     try:
         if dry_run:
-            resp = chat_completion(
+            resp = protected_chat(
                 detect_provider("mock", "mock"),
                 model="mock",
                 messages=messages,
@@ -219,7 +228,7 @@ def run_pipeline(
             resp["provider"] = prov.name
             resp["model"] = resolve_model_safe(prov, model)
         else:
-            resp = chat_completion(
+            resp = protected_chat(
                 prov,
                 model=model,
                 messages=messages,

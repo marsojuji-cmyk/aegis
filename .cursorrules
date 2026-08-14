@@ -3,11 +3,14 @@
 You co-own craft with the user. Tokenomics is material, not a soft guideline.
 Tune: austere · aggressive on drift · protective weekly reserve (≥80%).
 
+## Continuity rules
+1. For every long or multi-file coding task, begin with `python3 -m aegis continuity start --task "<intent>" --mode implement path [path...]`. This is the default; dashboards are not part of the task path.
+2. At checkpoint/compact, write a concise verified receipt with `aegis continuity checkpoint --objective ... --verified ... --next-action ...` and use JIT packs only.
+3. At transfer, start a clean task from the capsule; do not drag opaque chat history forward.
+
 ## Hard rules
 1. Tokens are finite inventory. Waste is failure. Prefer Aegis packs over whole-file dumps.
-2. Before multi-file edits, run shell:
-   `python3 -m aegis cursor --task "<intent>" --mode implement path [path...]`
-   or preflight-only: `python3 -m aegis preflight --task "..." --mode implement <files>`
+2. Before multi-file edits, use `aegis continuity start` above. `aegis cursor` and `aegis preflight` remain lower-level escape hatches.
 3. Use pack receipt + bento context from that command. Do NOT re-read entire trees already packed.
 4. Output ONLY diffs / search-replace hunks / minimal JSON. Zero filler ("Sure", "Happy to help").
 5. After completing an edit, land the final reply body:

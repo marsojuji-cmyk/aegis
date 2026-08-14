@@ -54,6 +54,11 @@ def record(
     request_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     cfg = cfg or load_config()
+    normalized_request_id = request_id.strip() if request_id else None
+    if not dry_run and normalized_request_id and any(
+        row.get("request_id") == normalized_request_id for row in read_all()
+    ):
+        raise ValueError(f"ledger request_id already recorded: {normalized_request_id}")
     tokens_saved = max(0, (raw_in - processed_in) + (raw_out - processed_out))
     cost_in_raw = (raw_in / 1000.0) * cfg.cost_per_1k_input
     cost_in_act = (processed_in / 1000.0) * cfg.cost_per_1k_input
@@ -75,7 +80,7 @@ def record(
         "reuse": bool(reuse),
         "project": project,
         "source": source,
-        "request_id": request_id,
+        "request_id": normalized_request_id,
         "meta": meta or {},
         "cost_without": round(cost_in_raw + cost_out_raw, 6),
         "cost_with": round(cost_in_act + cost_out_act, 6),
@@ -180,6 +185,13 @@ def generate_report(
         else 0.0
     )
 
+    selected_financial_savings = round(
+        sum(float(r.get("savings_dollars", 0)) for r in selected), 4
+    )
+    local_counterfactual_financial_savings = round(
+        sum(float(r.get("savings_dollars", 0)) for r in rows if r not in observed), 4
+    )
+
     return {
         "source": "durable_ledger",
         "accounting": accounting,
@@ -209,9 +221,9 @@ def generate_report(
         "lifetime_reuse_hits": lifetime_reuse_hits,
         "lifetime_pack_attempts": lifetime_pack_attempts,
         "lifetime_reuse_hit_rate_percent": lifetime_reuse_hit_rate,
-        "net_financial_savings_dollars": round(
-            sum(float(r.get("savings_dollars", 0)) for r in rows), 4
-        ),
+        # Never surface modeled local savings as provider-observed economics.
+        "net_financial_savings_dollars": selected_financial_savings,
+        "local_counterfactual_financial_savings_dollars": local_counterfactual_financial_savings,
         "transactions": rows,
     }
 

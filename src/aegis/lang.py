@@ -61,6 +61,10 @@ FIRST_CLASS = frozenset(
 )
 
 
+def is_first_class(lang: str) -> bool:
+    return lang in FIRST_CLASS
+
+
 def detect_lang(path: str, content: str = "") -> str:
     ext = Path(path).suffix.lower()
     if ext in EXT_MAP:

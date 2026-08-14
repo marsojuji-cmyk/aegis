@@ -1,7 +1,7 @@
 """E3 multi-lang scrub + TS slice + scrub-only fallback."""
 
 from aegis.bento import assemble
-from aegis.lang import detect_lang
+from aegis.lang import detect_lang, is_first_class
 from aegis.scrub import scrub
 from aegis.ts_slice import build_explore_js, build_implement_js
 
@@ -45,6 +45,11 @@ def test_detect_lang():
     assert detect_lang("a.ts") == "typescript"
     assert detect_lang("a.py") == "python"
     assert detect_lang("a.go") == "go"
+
+
+def test_is_first_class():
+    assert is_first_class("python") is True
+    assert is_first_class("go") is False
 
 
 def test_ts_explore_drops_bodies():

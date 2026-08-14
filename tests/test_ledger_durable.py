@@ -41,3 +41,23 @@ def test_production_report_excludes_local_counterfactuals(aegis_tmp):
     report = generate_report(accounting="provider_observed")
     assert report["total_tokens_consumed"] == 30
     assert report["observed_transactions"] == 1
+    assert report["net_financial_savings_dollars"] == 0
+    assert report["local_counterfactual_financial_savings_dollars"] > 0
+
+
+def test_record_rejects_duplicate_provider_request_id(aegis_tmp):
+    first = record(
+        kind="router_run", source="provider_observed", request_id=" resp_duplicate ",
+        raw_in=10, processed_in=10,
+    )
+    assert first["request_id"] == "resp_duplicate"
+
+    with pytest.raises(ValueError, match="request_id already recorded"):
+        record(
+            kind="router_run", source="provider_observed", request_id="resp_duplicate",
+            raw_in=10, processed_in=10,
+        )
+
+    assert len(read_all()) == 1
+    record(kind="router_run", source="provider_observed", request_id="resp_distinct")
+    assert len(read_all()) == 2

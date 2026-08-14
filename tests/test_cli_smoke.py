@@ -47,3 +47,16 @@ def test_doctor(aegis_tmp):
     r = doctor_report()
     assert r["epoch"] == "1.1"
     assert str(r.get("version", "")).startswith("1.1.")
+
+
+def test_outcome_cli_records_unknown_cost(aegis_tmp):
+    from aegis.outcomes import load_outcomes
+
+    assert main([
+        "outcome", "record", "--task-id", "unknown-cost", "--variant", "governed",
+        "--accepted", "--elapsed-seconds", "1",
+    ]) == 0
+    row = list(load_outcomes())[-1]
+    assert row["cost_usd"] is None
+    assert row["cost_status"] == "unknown"
+    assert row["cost_source"] == ""

@@ -51,11 +51,39 @@ class AegisConfig:
     budget_use_projection: bool = True
     # Continuity Bridge — privileged handoff near hard stop / emergency band
     continuity_bridge_enabled: bool = True
+    continuity_default_enabled: bool = True
     continuity_auto_on_emergency: bool = True
     continuity_include_embeddings: bool = True  # canonical texts + hash; vectors optional
     membership_guard_enabled: bool = True
     membership_shadow_weekly_tokens: int = 0
     membership_reserve_percent: float = 0.20
+    # Middleware Guard (AEGIS Pillars)
+    guard_max_tool_calls: int = 20
+    guard_max_velocity_calls_per_min: int = 5
+    guard_max_output_length: int = 4000
+    guard_allowed_domains: str = ""  # comma-separated string for TOML
+    guard_min_signal_score: float = 0.5
+    guard_trim_strategy: str = "truncate"
+    guard_signal_preserve_keywords: str = ""
+    guard_audit_limit: int = 50
+    guard_shadow_mode: bool = True
+    guard_signal_shadow_mode: bool = True
+
+    def __post_init__(self) -> None:
+        checkpoint = self.context_checkpoint_percent
+        transfer = self.context_transfer_percent
+        numeric = (int, float)
+        if (
+            isinstance(checkpoint, bool)
+            or isinstance(transfer, bool)
+            or not isinstance(checkpoint, numeric)
+            or not isinstance(transfer, numeric)
+            or not 0 < checkpoint < transfer <= 100
+        ):
+            raise ValueError(
+                "context thresholds must satisfy "
+                "0 < context_checkpoint_percent < context_transfer_percent <= 100"
+            )
 
 
 DEFAULTS = AegisConfig()
@@ -123,11 +151,21 @@ def _format_toml(cfg: AegisConfig) -> str:
         f"budget_recovery_hysteresis = {cfg.budget_recovery_hysteresis}",
         f"budget_use_projection = {str(cfg.budget_use_projection).lower()}",
         f"continuity_bridge_enabled = {str(cfg.continuity_bridge_enabled).lower()}",
+        f"continuity_default_enabled = {str(cfg.continuity_default_enabled).lower()}",
         f"continuity_auto_on_emergency = {str(cfg.continuity_auto_on_emergency).lower()}",
         f"continuity_include_embeddings = {str(cfg.continuity_include_embeddings).lower()}",
         f"membership_guard_enabled = {str(cfg.membership_guard_enabled).lower()}",
         f"membership_shadow_weekly_tokens = {cfg.membership_shadow_weekly_tokens}",
         f"membership_reserve_percent = {cfg.membership_reserve_percent}",
+        f"guard_max_tool_calls = {cfg.guard_max_tool_calls}",
+        f"guard_max_velocity_calls_per_min = {cfg.guard_max_velocity_calls_per_min}",
+        f"guard_max_output_length = {cfg.guard_max_output_length}",
+        f'guard_allowed_domains = "{cfg.guard_allowed_domains}"',
+        f"guard_min_signal_score = {cfg.guard_min_signal_score}",
+        f'guard_trim_strategy = "{cfg.guard_trim_strategy}"',
+        f'guard_signal_preserve_keywords = "{cfg.guard_signal_preserve_keywords}"',
+        f"guard_audit_limit = {cfg.guard_audit_limit}",
+        f"guard_shadow_mode = {str(cfg.guard_shadow_mode).lower()}",
         "",
     ]
     return "\n".join(lines)

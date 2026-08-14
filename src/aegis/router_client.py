@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Optional
 
 from aegis.providers import ProviderSpec, resolve_model
 
-
 def chat_completion(
     provider: ProviderSpec,
     *,
