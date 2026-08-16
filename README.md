@@ -1,4 +1,4 @@
-# Aegis 1.0
+# Aegis 1.1.1
 
 **Sovereign JIT token supply chain** for AI coding agents.
 
@@ -34,6 +34,7 @@ aegis preflight --task "…" --mode implement path.py
 # Cursor Composer
 aegis cursor --install
 aegis cursor --task "…" --mode implement path.py
+aegis cursor --gate path.py
 aegis cursor --outputs
 
 # Universal router (10×)
@@ -59,6 +60,8 @@ aegis output-get out_<id>
 # Ops
 aegis budget | surplus | doctor | langs | version
 aegis idea list | audit | invest
+aegis sprint seed | list | report | board
+aegis hermes search "query" | hermes resolve "note"
 ```
 
 ## Data plane (`~/.aegis/`)
@@ -69,6 +72,7 @@ aegis idea list | audit | invest
 | `packs/` | Content-addressed context packs |
 | `outputs/out_*.json` | Unified slim finals index |
 | `fund.json` / `ideas.jsonl` | Surplus → ROI backlog |
+| `sprints.jsonl` | Sprint ledger (`aegis sprint`) |
 | `config.toml` | Cap, reserve floor, reinvest rate |
 
 ## Compound engine (languages)
@@ -90,6 +94,6 @@ aegis idea list | audit | invest
 
 ## Version
 
-**1.0.0** — compound platform milestone.
+**1.1.1** — product version (`pyproject.toml` / `src/aegis/__init__.py`). Compound platform is 1.0.0 history.
 
 See [docs/EVOLUTION.md](docs/EVOLUTION.md) · [docs/ABSOLUTE.md](docs/ABSOLUTE.md) · [docs/FIELD.md](docs/FIELD.md)

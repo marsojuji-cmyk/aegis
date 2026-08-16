@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from aegis.output_store import load_output, store_stats
 from aegis.paths import aegis_home, ensure_home, outputs_dir
@@ -47,6 +47,7 @@ Tune: austere · aggressive on drift · protective weekly reserve (≥80%).
 9. Optional live model route (mock/ollama/grok/claude/openai):
    `python3 -m aegis cursor --task "..." --model mock --mode implement <files>`
 10. Absolute Form: peer standard. No enthusiasm theater. Show naive vs Aegis cost when material.
+11. If the composer block says `reuse=hit`, do not Read `packed_paths`. Use the bento.
 
 ## Router daemon (optional)
 If `aegis serve` is running at http://127.0.0.1:8787, prefer it for OpenAI-compatible calls
@@ -90,26 +91,72 @@ __pycache__/
 """
 
 
+CURSOR_SKILL_NAMES = (
+    "aegis-pack-first",
+    "aegis-continuity",
+    "aegis-sprint",
+    "aegis-hermes",
+)
+
+
+def cursor_skills_src() -> Path:
+    here = Path(__file__).resolve()
+    repo = here.parents[2] / "integrations" / "cursor" / "skills"
+    if repo.is_dir():
+        return repo
+    return Path.home() / "Projects" / "aegis" / "integrations" / "cursor" / "skills"
+
+
+def agents_skills_dir() -> Path:
+    raw = os.environ.get("AEGIS_AGENTS_SKILLS")
+    if raw:
+        return Path(raw).expanduser().resolve()
+    return Path.home() / ".agents" / "skills"
+
+
+def install_cursor_skills(*, dest: Optional[Path] = None) -> List[str]:
+    """Copy the four Cursor skills from the repo SoT into an agents skills dir."""
+    src_root = cursor_skills_src()
+    dest_root = Path(dest) if dest is not None else agents_skills_dir()
+    written: List[str] = []
+    for name in CURSOR_SKILL_NAMES:
+        src = src_root / name / "SKILL.md"
+        if not src.is_file():
+            continue
+        out = dest_root / name / "SKILL.md"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        written.append(str(out))
+    return written
+
+
+def installed_cursor_skills(*, dest: Optional[Path] = None) -> List[str]:
+    root = Path(dest) if dest is not None else agents_skills_dir()
+    found: List[str] = []
+    for name in CURSOR_SKILL_NAMES:
+        if (root / name / "SKILL.md").is_file():
+            found.append(name)
+    return found
+
+
 def install_cursor_rules(
     target_dir: Optional[str] = None,
     *,
     also_home: bool = False,
 ) -> Dict[str, Any]:
-    """Write .cursorrules + .cursorignore. Returns paths written."""
+    """Write .cursorrules + .cursorignore + the four Cursor skills."""
     written: List[str] = []
     dirs: List[Path] = []
     if target_dir:
         dirs.append(Path(target_dir).expanduser().resolve())
     else:
         dirs.append(Path.cwd().resolve())
-    # Always install into product repo when available
-    product = Path.home() / "Projects" / "aegis"
-    if product.is_dir() and product not in dirs:
-        dirs.append(product)
+        product = Path.home() / "Projects" / "aegis"
+        if product.is_dir() and product not in dirs:
+            dirs.append(product)
     if also_home:
         home_cursor = Path.home() / ".cursor"
         home_cursor.mkdir(parents=True, exist_ok=True)
-        # global-ish rules file some setups read
         global_rules = home_cursor / "aegis.cursorrules"
         global_rules.write_text(CURSORRULES, encoding="utf-8")
         written.append(str(global_rules))
@@ -122,13 +169,169 @@ def install_cursor_rules(
         ignore.write_text(CURSORIGNORE, encoding="utf-8")
         written.extend([str(rules), str(ignore)])
 
-    # integrations mirror
-    integ = Path.home() / "Projects" / "aegis" / "integrations" / "cursor"
-    integ.mkdir(parents=True, exist_ok=True)
-    (integ / "cursorrules").write_text(CURSORRULES, encoding="utf-8")
-    (integ / "cursorignore").write_text(CURSORIGNORE, encoding="utf-8")
-    written.append(str(integ / "cursorrules"))
-    return {"written": written, "count": len(written)}
+    if not target_dir:
+        integ = Path.home() / "Projects" / "aegis" / "integrations" / "cursor"
+        integ.mkdir(parents=True, exist_ok=True)
+        (integ / "cursorrules").write_text(CURSORRULES, encoding="utf-8")
+        (integ / "cursorignore").write_text(CURSORIGNORE, encoding="utf-8")
+        written.append(str(integ / "cursorrules"))
+
+    skill_dest = (
+        Path(target_dir).expanduser().resolve() / "skills" if target_dir else None
+    )
+    skills = install_cursor_skills(dest=skill_dest)
+    written.extend(skills)
+    return {"written": written, "count": len(written), "skills": skills}
+
+
+NEIGHBOR_CAP = 3
+NEIGHBOR_SUFFIXES = {".py", ".md", ".ts", ".js", ".tsx"}
+
+
+def _resolve_path(raw: str) -> Path:
+    return Path(raw).expanduser().resolve()
+
+
+def last_cursor_meta_path() -> Path:
+    return aegis_home() / "cursor_last.json"
+
+
+def load_last_cursor_meta() -> Dict[str, Any]:
+    path = last_cursor_meta_path()
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def expand_pack_paths(paths: Sequence[str]) -> Dict[str, Any]:
+    """Keep existing files. If none exist, add up to 3 same-dir neighbors."""
+    existing: List[str] = []
+    missing: List[str] = []
+    for raw in paths:
+        path = _resolve_path(str(raw))
+        if path.is_file():
+            existing.append(str(path))
+        else:
+            missing.append(str(path))
+    neighbors: List[str] = []
+    if existing:
+        return {
+            "paths": existing,
+            "neighbors": neighbors,
+            "missing": missing,
+        }
+    seen = set()
+    for missed in missing:
+        parent = Path(missed).parent
+        init = parent / "__init__.py"
+        if init.is_file():
+            resolved = str(init.resolve())
+            if resolved not in seen:
+                neighbors.append(resolved)
+                seen.add(resolved)
+        if parent.is_dir():
+            sibs = sorted(
+                child
+                for child in parent.iterdir()
+                if child.is_file()
+                and child.suffix in NEIGHBOR_SUFFIXES
+                and child.name != "__init__.py"
+            )
+            for sib in sibs:
+                if len(neighbors) >= NEIGHBOR_CAP:
+                    break
+                resolved = str(sib.resolve())
+                if resolved not in seen:
+                    neighbors.append(resolved)
+                    seen.add(resolved)
+        if len(neighbors) >= NEIGHBOR_CAP:
+            break
+    return {
+        "paths": neighbors,
+        "neighbors": neighbors,
+        "missing": missing,
+    }
+
+
+def last_pack_covers(paths: Sequence[str], mode: str) -> Optional[Dict[str, Any]]:
+    """Reuse last Cursor pack when requested paths are a subset. No file read."""
+    from aegis.pack_cache import load_pack, normalize_mode
+
+    meta = load_last_cursor_meta()
+    pack_id = str(meta.get("pack_id") or "")
+    if not pack_id:
+        return None
+    last_paths = {str(_resolve_path(p)) for p in (meta.get("paths") or []) if p}
+    want = {str(_resolve_path(p)) for p in paths if p}
+    if not want or not want.issubset(last_paths):
+        return None
+    last_mode = normalize_mode(str(meta.get("mode") or "explore"))
+    want_mode = normalize_mode(mode)
+    if want_mode == "implement" and last_mode != "implement":
+        return None
+    payload = load_pack(pack_id)
+    if not payload:
+        return None
+    return {"pack_id": pack_id, "payload": payload, "meta": meta}
+
+
+def cursor_gate(path: str, *, mode: str = "implement") -> Dict[str, Any]:
+    """Tell Composer whether to reuse the last pack or Read/pack."""
+    resolved = str(_resolve_path(path))
+    covered = last_pack_covers([resolved], mode)
+    if covered:
+        return {
+            "action": "reuse",
+            "pack_id": covered["pack_id"],
+            "packed_paths": list((covered["meta"] or {}).get("paths") or []),
+            "path": resolved,
+        }
+    return {
+        "action": "pack",
+        "pack_id": None,
+        "packed_paths": [],
+        "path": resolved,
+    }
+
+
+def pack_id_from_ctx(ctx: Mapping[str, Any]) -> str:
+    if not ctx:
+        return ""
+    direct = ctx.get("pack_id")
+    if direct:
+        return str(direct)
+    meta = ctx.get("meta") or {}
+    if meta.get("pack_id"):
+        return str(meta["pack_id"])
+    pre = ctx.get("preflight") or {}
+    return str(pre.get("pack_id") or "")
+
+
+def _bento_markdown(comps: Sequence[Mapping[str, Any]]) -> str:
+    blocks = []
+    for item in comps:
+        blocks.append(
+            f"### {item.get('path')} [{item.get('lang')}] "
+            f"{item.get('raw_tokens')}→{item.get('compressed_tokens')} tok\n"
+            f"```\n{item.get('payload_snippet') or ''}\n```"
+        )
+    return "\n".join(blocks) if blocks else "(no components)"
+
+
+def _filter_components(
+    comps: Sequence[Mapping[str, Any]], paths: Sequence[str]
+) -> List[Mapping[str, Any]]:
+    want = {str(_resolve_path(p)) for p in paths}
+    kept = [
+        item
+        for item in comps
+        if str(_resolve_path(str(item.get("path") or "."))) in want
+    ]
+    return list(kept or comps)
 
 
 def cursor_context(
@@ -138,64 +341,139 @@ def cursor_context(
     mode: str = "implement",
     targets: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """
-    Run preflight and return Composer-ready context block + pack/receipt/output lane.
-    """
-    paths = [str(Path(p).expanduser().resolve()) for p in paths]
-    pf = run_preflight(
-        paths=paths,
-        task=task,
-        mode=mode,
-        targets=list(targets or []),
-        strict=False,
-        no_output=False,
-        recover=True,
-    )
-    payload = (pf.summary or {}).get("payload") or {}
-    comps = payload.get("bento_components") or []
-    bento_md = []
-    for c in comps:
-        bento_md.append(
-            f"### {c.get('path')} [{c.get('lang')}] "
-            f"{c.get('raw_tokens')}→{c.get('compressed_tokens')} tok\n"
-            f"```\n{c.get('payload_snippet') or ''}\n```"
+    """Pack-first Cursor context. Reuse last pack when it covers the paths."""
+    from aegis.ledger import record
+    from aegis.receipt import write_last_receipt
+
+    expanded = expand_pack_paths(paths)
+    path_list = list(expanded["paths"])
+    if not path_list:
+        block = "\n".join(
+            [
+                "[AEGIS CURSOR CONTEXT]",
+                f"task={task}",
+                "reuse=miss pack_id=",
+                "rule=empty pack; pass an existing file or a dir with neighbors",
+            ]
         )
+        meta = {
+            "task": task,
+            "mode": mode,
+            "pack_id": None,
+            "reuse": False,
+            "ok": False,
+            "reason": "EMPTY_PACK",
+            "paths": [],
+            "missing": expanded["missing"],
+        }
+        return {
+            "ok": False,
+            "pack_id": None,
+            "reuse": False,
+            "reason": "EMPTY_PACK",
+            "composer_block": block,
+            "meta": meta,
+            "preflight": {},
+            "expanded": expanded,
+        }
+
+    covered = last_pack_covers(path_list, mode)
+    reuse = bool(covered)
+    pack_id = None
+    payload: Dict[str, Any] = {}
+    pf_dict: Dict[str, Any] = {}
+    mode_used = mode
+    quality = "pass"
+    reserve = "ok"
+    output_profile = None
+
+    if covered:
+        pack_id = covered["pack_id"]
+        payload = dict(covered["payload"] or {})
+        payload["reuse"] = True
+        payload["pack_id"] = pack_id
+        payload["core_task"] = task
+        comps = _filter_components(payload.get("bento_components") or [], path_list)
+        raw = int(payload.get("total_raw_tokens", 0))
+        entry = record(
+            kind="reuse_hit",
+            task=f"cursor:{mode}:{task[:40]}",
+            mode=mode,
+            raw_in=raw,
+            processed_in=0,
+            pack_id=pack_id,
+            reuse=True,
+            meta={"paths": path_list, "cursor_gate": "last_pack", "preflight": False},
+        )
+        payload["ledger_entry"] = entry
+        write_last_receipt(entry, payload)
+        quality = str((payload.get("quality") or {}).get("grade") or "pass")
+        mode_used = str(payload.get("mode") or mode)
+    else:
+        pf = run_preflight(
+            paths=path_list,
+            task=task,
+            mode=mode,
+            targets=list(targets or []),
+            strict=False,
+            no_output=False,
+            recover=True,
+        )
+        payload = (pf.summary or {}).get("payload") or {}
+        comps = payload.get("bento_components") or []
+        pack_id = pf.pack_id
+        reuse = bool(payload.get("reuse"))
+        mode_used = pf.mode_used
+        quality = pf.quality_grade
+        reserve = pf.reserve_signal
+        output_profile = pf.output_profile
+        pf_dict = pf.as_dict()
+
+    reuse_token = "hit" if reuse and pack_id else "miss"
+    stored_paths = path_list
+    if covered:
+        stored_paths = list((covered.get("meta") or {}).get("paths") or path_list)
     composer_block = "\n".join(
         [
             "[AEGIS CURSOR CONTEXT]",
             f"task={task}",
-            f"mode={pf.mode_used} quality={pf.quality_grade} reserve={pf.reserve_signal}",
-            f"pack_id={pf.pack_id}",
-            f"output_profile={pf.output_profile}",
-            "rule=edit from this pack only; land final with `aegis land --body-file …`",
+            f"mode={mode_used} quality={quality} reserve={reserve}",
+            f"reuse={reuse_token} pack_id={pack_id or ''}",
+            f"packed_paths={','.join(path_list)}",
+            f"output_profile={output_profile}",
+            "rule=if reuse=hit do not Read packed_paths; land final with `aegis land --body-file …`",
             "",
             "## Bento",
-            "\n".join(bento_md) if bento_md else "(no components)",
+            _bento_markdown(comps),
         ]
     )
-    # write last cursor context for IDE pickup
     ensure_home()
     last = aegis_home() / "cursor_last_context.md"
     last.write_text(composer_block, encoding="utf-8")
-    meta_path = aegis_home() / "cursor_last.json"
     meta = {
         "task": task,
-        "mode": pf.mode_used,
-        "pack_id": pf.pack_id,
-        "quality": pf.quality_grade,
-        "reserve": pf.reserve_signal,
-        "paths": paths,
-        "output_profile": pf.output_profile,
+        "mode": mode_used,
+        "pack_id": pack_id,
+        "quality": quality,
+        "reserve": reserve,
+        "reuse": reuse_token,
+        "paths": stored_paths,
+        "neighbors": expanded["neighbors"],
+        "missing": expanded["missing"],
+        "output_profile": output_profile,
         "context_path": str(last),
         "outputs_dir": str(outputs_dir()),
-        "ok": pf.ok,
+        "ok": bool(pack_id),
     }
-    meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    last_cursor_meta_path().write_text(json.dumps(meta, indent=2), encoding="utf-8")
     return {
-        "ok": pf.ok,
+        "ok": bool(pack_id),
+        "pack_id": pack_id,
+        "reuse": reuse_token,
         "composer_block": composer_block,
         "meta": meta,
-        "preflight": pf.as_dict(),
+        "preflight": pf_dict,
+        "expanded": expanded,
     }
 
 
@@ -265,6 +543,7 @@ def list_cursor_outputs(limit: int = 20) -> List[Dict[str, Any]]:
 def cursor_status() -> Dict[str, Any]:
     product_rules = Path.home() / "Projects" / "aegis" / ".cursorrules"
     cwd_rules = Path.cwd() / ".cursorrules"
+    skills = installed_cursor_skills()
     return {
         "cursorrules_product": product_rules.is_file(),
         "cursorrules_cwd": cwd_rules.is_file(),
@@ -272,6 +551,9 @@ def cursor_status() -> Dict[str, Any]:
         "store": store_stats(),
         "last_context": str(aegis_home() / "cursor_last_context.md"),
         "last_meta": str(aegis_home() / "cursor_last.json"),
+        "skills_src": str(cursor_skills_src()),
+        "skills_dest": str(agents_skills_dir()),
+        "skills": skills,
         "router_hint": "python3 -m aegis serve --port 8787",
         "cli": "python3 -m aegis cursor --task '…' --mode implement <files>",
     }

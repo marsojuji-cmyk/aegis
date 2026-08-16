@@ -591,14 +591,21 @@ def _cmd_continuity(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 2
-    from aegis.cursor_bridge import cursor_context
+    from aegis.cursor_bridge import cursor_context, pack_id_from_ctx
 
     ctx = cursor_context(
         task=args.task, paths=args.paths, mode=args.mode,
         targets=list(args.target or []),
     )
-    artifacts = ([{"kind": "pack", "id": ctx.get("pack_id", "")}]
-                 if ctx.get("pack_id") else [])
+    pack_id = pack_id_from_ctx(ctx)
+    if not pack_id or not ctx.get("ok"):
+        print(
+            "aegis continuity start: empty pack "
+            "(no existing files or neighbors to pack)",
+            file=sys.stderr,
+        )
+        return 2
+    artifacts = [{"kind": "pack", "id": pack_id}]
     if source_manifest:
         artifacts.append(source_manifest)
     constraints = ["Use only the attached JIT pack; do not replay broad history."]
@@ -1453,7 +1460,7 @@ def _cmd_langs(args: argparse.Namespace) -> int:
 
 
 def _cmd_wrap(args: argparse.Namespace) -> int:
-    """CLI entry for OpenAI / Anti-Gravity wrappers."""
+    """CLI entry for OpenAI / Anti-Gravity / Hermes wrappers."""
     from aegis.wrappers.antigravity_wrapper import AntiGravityWrapper
     from aegis.wrappers.openai_wrapper import OpenAIWrapper
 
@@ -1461,6 +1468,32 @@ def _cmd_wrap(args: argparse.Namespace) -> int:
     provider = (args.provider or "openai").lower()
     paths = list(args.paths or [])
     prompt = args.prompt or args.task
+    if provider == "hermes":
+        from aegis.wrappers.hermes_wrapper import HermesWrapper
+
+        raw_text = prompt
+        if args.body_file:
+            raw_text = open(args.body_file, encoding="utf-8", errors="replace").read()
+        try:
+            req = json.loads(raw_text)
+        except json.JSONDecodeError:
+            print(
+                "aegis wrap hermes: --prompt/--body-file must be a JSON request",
+                file=sys.stderr,
+            )
+            return 2
+        resp = HermesWrapper().handle(req)
+        if args.json:
+            print(json.dumps(resp, indent=2, ensure_ascii=False))
+        else:
+            print(
+                f"[AEGIS WRAP hermes] decision={resp.get('decision')} "
+                f"ok={resp.get('ok')} executed={resp.get('executed')} "
+                f"request_id={resp.get('request_id')}"
+            )
+            print(resp.get("reason") or "")
+        return 0 if resp.get("decision") == "allow" else 1
+
     common = dict(
         task=args.task,
         paths=paths,
@@ -1508,7 +1541,7 @@ def _cmd_wrap(args: argparse.Namespace) -> int:
     else:
         print(
             f"aegis wrap: unknown provider {provider!r} "
-            f"(openai|antigravity)",
+            f"(openai|antigravity|hermes)",
             file=sys.stderr,
         )
         return 2
@@ -1559,6 +1592,7 @@ def _cmd_providers(args: argparse.Namespace) -> int:
 def _cmd_cursor(args: argparse.Namespace) -> int:
     from aegis.cursor_bridge import (
         cursor_context,
+        cursor_gate,
         cursor_run,
         cursor_status,
         install_cursor_rules,
@@ -1568,6 +1602,17 @@ def _cmd_cursor(args: argparse.Namespace) -> int:
 
     _ensure_seeded()
     paths = list(getattr(args, "paths", None) or [])
+
+    if getattr(args, "gate", None):
+        gate = cursor_gate(args.gate, mode=getattr(args, "mode", "implement") or "implement")
+        if getattr(args, "json", False):
+            print(json.dumps(gate, indent=2))
+        else:
+            print(
+                f"action={gate['action']} pack_id={gate.get('pack_id') or ''} "
+                f"path={gate['path']}"
+            )
+        return 0 if gate.get("action") == "reuse" else 1
 
     if getattr(args, "install", False):
         res = install_cursor_rules(
@@ -1596,6 +1641,7 @@ def _cmd_cursor(args: argparse.Namespace) -> int:
                 f"tok saved {st['store'].get('tokens_saved')}"
             )
             print(f"  last:    {st['last_context']}")
+            print(f"  skills:  {', '.join(st.get('skills') or []) or '(none — aegis cursor --install)'}")
             print(f"  cli:     {st['cli']}")
         return 0
 
@@ -1837,6 +1883,180 @@ def _cmd_invest(args: argparse.Namespace) -> int:
     return 0 if result.get("ok") else 1
 
 
+def _cmd_sprint(args: argparse.Namespace) -> int:
+    from aegis.sprints import (
+        add_sprint,
+        add_task,
+        block_sprint,
+        complete_sprint,
+        complete_task,
+        format_report_text,
+        get_sprint,
+        list_sprints,
+        park_sprint,
+        report,
+        unpark_sprint,
+        seed_board,
+        start_sprint,
+        write_board,
+    )
+
+    _prepare_read()
+    action = args.sprint_action
+    if action == "seed":
+        result = seed_board(force=bool(getattr(args, "force", False)))
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print(
+                f"seeded created={len(result['created'])} "
+                f"refreshed={len(result['refreshed'])} total={result['total']}"
+            )
+        return 0
+    if action == "add":
+        row = add_sprint(args.title, goal=args.goal or "", status=args.status)
+        if args.json:
+            print(json.dumps(row, indent=2))
+        else:
+            print(f"added {row['id']}: {row['title']} [{row['status']}]")
+        return 0
+    if action == "list":
+        rows = list_sprints(status=args.status or "")
+        if args.json:
+            print(json.dumps(rows, indent=2))
+        else:
+            if not rows:
+                print("(no sprints — run: aegis sprint seed)")
+            for row in rows:
+                print(f"{row['id']:<8} {row['status']:<8} {row['title']}")
+        return 0
+    if action == "show":
+        row = get_sprint(args.sprint_id)
+        if row is None:
+            print(f"unknown sprint {args.sprint_id}", file=sys.stderr)
+            return 2
+        print(json.dumps(row, indent=2))
+        return 0
+    if action == "start":
+        result = start_sprint(args.sprint_id)
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif result.get("ok"):
+            sprint = result["sprint"]
+            print(f"active {sprint['id']}: {sprint['title']}")
+        else:
+            print(f"start failed: {result.get('error')}", file=sys.stderr)
+        return 0 if result.get("ok") else 2
+    if action == "complete":
+        result = complete_sprint(
+            args.sprint_id, verified=args.verified, evidence=args.evidence or ""
+        )
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif result.get("ok"):
+            sprint = result["sprint"]
+            print(f"done {sprint['id']}: {sprint['verified']}")
+        else:
+            print(f"complete failed: {result.get('error')}", file=sys.stderr)
+        return 0 if result.get("ok") else 2
+    if action == "block":
+        blocked = [item.strip() for item in (args.blocked_by or "").split(",") if item.strip()]
+        result = block_sprint(args.sprint_id, reason=args.reason or "", blocked_by=blocked)
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif result.get("ok"):
+            print(f"blocked {result['sprint']['id']}")
+        else:
+            print(f"block failed: {result.get('error')}", file=sys.stderr)
+        return 0 if result.get("ok") else 2
+    if action == "unpark":
+        result = unpark_sprint(args.sprint_id, reason=args.reason or "")
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif result.get("ok"):
+            print(f"unparked {result['sprint']['id']} → {result['sprint']['status']}")
+        else:
+            print(f"unpark failed: {result.get('error')}", file=sys.stderr)
+        return 0 if result.get("ok") else 2
+    if action == "park":
+        result = park_sprint(args.sprint_id, reason=args.reason or "")
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif result.get("ok"):
+            print(f"parked {result['sprint']['id']}")
+        else:
+            print(f"park failed: {result.get('error')}", file=sys.stderr)
+        return 0 if result.get("ok") else 2
+    if action == "task":
+        if args.task_action == "add":
+            result = add_task(args.sprint_id, args.title)
+        else:
+            result = complete_task(args.sprint_id, args.task_id, evidence=args.evidence or "")
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif result.get("ok"):
+            task = result["task"]
+            print(f"{task['id']} [{task['status']}] {task['title']}")
+        else:
+            print(f"task failed: {result.get('error')}", file=sys.stderr)
+        return 0 if result.get("ok") else 2
+    if action == "report":
+        payload = report(repo=Path(args.repo) if args.repo else Path.cwd())
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(format_report_text(payload), end="")
+        return 0
+    if action == "board":
+        dest = write_board(Path(args.write) if args.write else None)
+        if args.json:
+            print(json.dumps({"ok": True, "path": str(dest)}, indent=2))
+        else:
+            print(f"wrote {dest}")
+        return 0
+    print(f"unknown sprint action {action}", file=sys.stderr)
+    return 2
+
+
+def _cmd_hermes(args: argparse.Namespace) -> int:
+    _prepare_read()
+    action = args.hermes_action
+    if action == "search":
+        from aegis.hermes_search import unified_search
+
+        payload = unified_search(
+            args.query,
+            kind=args.kind or "",
+            tag=args.tag or "",
+            project=args.project or "",
+            limit=int(args.limit),
+        )
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0
+    if action == "resolve":
+        from aegis.hermes_notes import (
+            load_verified_disk_graph,
+            resolve_context,
+            set_active_graph,
+        )
+
+        graph, err = load_verified_disk_graph()
+        if graph is not None:
+            set_active_graph(graph)
+        result = resolve_context(
+            args.query,
+            project=args.project or "",
+            max_notes=int(args.max_notes),
+        )
+        payload = result.as_dict()
+        if err:
+            payload["index_error"] = err
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0
+    print(f"unknown hermes action {action}", file=sys.stderr)
+    return 2
+
+
 def _cmd_audit(args: argparse.Namespace) -> int:
     from aegis.audit import audit_portfolio, format_audit_text
     from aegis.ideas import rescore_all
@@ -1867,7 +2087,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="aegis",
         description="Aegis JIT token supply chain — piggy bank + reduce/reuse/recycle",
     )
-    p.add_argument("--version", action="version", version="%(prog)s 1.0.2")
+    from aegis import __version__ as _aegis_version
+
+    p.add_argument("--version", action="version", version=f"%(prog)s {_aegis_version}")
     sub = p.add_subparsers(dest="command", required=True)
 
     ver = sub.add_parser("version", help="Show Aegis version + compound engine")
@@ -1880,12 +2102,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     wrap = sub.add_parser(
         "wrap",
-        help="OpenAI / Anti-Gravity wrappers through full Aegis pipeline",
+        help="OpenAI / Anti-Gravity / Hermes wrappers through Aegis",
     )
     wrap.add_argument(
         "--provider",
         default="openai",
-        help="openai|antigravity (gemini)",
+        help="openai|antigravity|hermes",
     )
     wrap.add_argument("--task", default="wrap")
     wrap.add_argument("--prompt", default="", help="user prompt (default: task)")
@@ -2330,6 +2552,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Write .cursorrules + .cursorignore",
     )
+    cur.add_argument(
+        "--gate",
+        default=None,
+        help="Reuse-or-pack verdict for one path (exit 0=reuse, 1=pack)",
+    )
     cur.add_argument("--status", action="store_true", help="Cursor integration status")
     cur.add_argument(
         "--outputs",
@@ -2438,6 +2665,88 @@ def build_parser() -> argparse.ArgumentParser:
     gdl = gd_sub.add_parser("log", help="Print recent guard decisions from live memory")
     gdl.add_argument("--json", action="store_true")
     gdl.set_defaults(func=_cmd_guard)
+
+    sp = sub.add_parser("sprint", help="Sprint ledger — track Aegis work in iterations")
+    sp_sub = sp.add_subparsers(dest="sprint_action", required=True)
+    sp_seed = sp_sub.add_parser("seed", help="Insert the catalog (existing IDs kept)")
+    sp_seed.add_argument("--force", action="store_true")
+    sp_seed.add_argument("--json", action="store_true")
+    sp_seed.set_defaults(func=_cmd_sprint)
+    sp_add = sp_sub.add_parser("add", help="Add a sprint")
+    sp_add.add_argument("--title", required=True)
+    sp_add.add_argument("--goal", default="")
+    sp_add.add_argument("--status", default="planned", choices=["planned", "active", "blocked", "parked"])
+    sp_add.add_argument("--json", action="store_true")
+    sp_add.set_defaults(func=_cmd_sprint)
+    sp_list = sp_sub.add_parser("list", help="List sprints")
+    sp_list.add_argument("--status", default="")
+    sp_list.add_argument("--json", action="store_true")
+    sp_list.set_defaults(func=_cmd_sprint)
+    sp_show = sp_sub.add_parser("show", help="Print one sprint as JSON")
+    sp_show.add_argument("sprint_id")
+    sp_show.set_defaults(func=_cmd_sprint)
+    sp_start = sp_sub.add_parser("start", help="Mark a sprint active")
+    sp_start.add_argument("sprint_id")
+    sp_start.add_argument("--json", action="store_true")
+    sp_start.set_defaults(func=_cmd_sprint)
+    sp_done = sp_sub.add_parser("complete", help="Close a sprint with verified evidence")
+    sp_done.add_argument("sprint_id")
+    sp_done.add_argument("--verified", required=True)
+    sp_done.add_argument("--evidence", default="")
+    sp_done.add_argument("--json", action="store_true")
+    sp_done.set_defaults(func=_cmd_sprint)
+    sp_block = sp_sub.add_parser("block", help="Block a sprint")
+    sp_block.add_argument("sprint_id")
+    sp_block.add_argument("--reason", default="")
+    sp_block.add_argument("--blocked-by", default="")
+    sp_block.add_argument("--json", action="store_true")
+    sp_block.set_defaults(func=_cmd_sprint)
+    sp_park = sp_sub.add_parser("park", help="Park a sprint")
+    sp_park.add_argument("sprint_id")
+    sp_park.add_argument("--reason", default="")
+    sp_park.add_argument("--json", action="store_true")
+    sp_park.set_defaults(func=_cmd_sprint)
+    sp_unpark = sp_sub.add_parser("unpark", help="Move a parked/blocked sprint to planned")
+    sp_unpark.add_argument("sprint_id")
+    sp_unpark.add_argument("--reason", default="")
+    sp_unpark.add_argument("--json", action="store_true")
+    sp_unpark.set_defaults(func=_cmd_sprint)
+    sp_task = sp_sub.add_parser("task", help="Add or complete a sprint task")
+    sp_task_sub = sp_task.add_subparsers(dest="task_action", required=True)
+    sp_task_add = sp_task_sub.add_parser("add")
+    sp_task_add.add_argument("sprint_id")
+    sp_task_add.add_argument("--title", required=True)
+    sp_task_add.add_argument("--json", action="store_true")
+    sp_task_add.set_defaults(func=_cmd_sprint)
+    sp_task_done = sp_task_sub.add_parser("done")
+    sp_task_done.add_argument("sprint_id")
+    sp_task_done.add_argument("task_id")
+    sp_task_done.add_argument("--evidence", default="")
+    sp_task_done.add_argument("--json", action="store_true")
+    sp_task_done.set_defaults(func=_cmd_sprint)
+    sp_rep = sp_sub.add_parser("report", help="Roll up sprints + canonical register")
+    sp_rep.add_argument("--repo", default="")
+    sp_rep.add_argument("--json", action="store_true")
+    sp_rep.set_defaults(func=_cmd_sprint)
+    sp_board = sp_sub.add_parser("board", help="Write 05_SPRINT_BOARD.md")
+    sp_board.add_argument("--write", default="")
+    sp_board.add_argument("--json", action="store_true")
+    sp_board.set_defaults(func=_cmd_sprint)
+
+    hm = sub.add_parser("hermes", help="Read-only Hermes search/resolve")
+    hm_sub = hm.add_subparsers(dest="hermes_action", required=True)
+    hm_search = hm_sub.add_parser("search", help="Unified local index search")
+    hm_search.add_argument("query")
+    hm_search.add_argument("--kind", default="", help="file|note|project")
+    hm_search.add_argument("--tag", default="")
+    hm_search.add_argument("--project", default="")
+    hm_search.add_argument("--limit", type=int, default=20)
+    hm_search.set_defaults(func=_cmd_hermes)
+    hm_resolve = hm_sub.add_parser("resolve", help="Bounded graph context packet")
+    hm_resolve.add_argument("query")
+    hm_resolve.add_argument("--project", default="")
+    hm_resolve.add_argument("--max-notes", type=int, default=8)
+    hm_resolve.set_defaults(func=_cmd_hermes)
 
     return p
 

@@ -90,6 +90,19 @@ def test_continuity_start_records_validated_source_manifest(aegis_tmp, tmp_path,
     assert source["task_id"] == "M01"
     assert len(source["sha256"]) == 64
     assert source in result["capsule"]["artifacts"]
+    pack_arts = [row for row in result["capsule"]["artifacts"] if row.get("kind") == "pack"]
+    assert pack_arts
+    assert pack_arts[0].get("id")
+    assert result["context"].get("pack_id") == pack_arts[0]["id"]
+
+
+def test_continuity_start_refuses_empty_pack(aegis_tmp, tmp_path, capsys):
+    missing = tmp_path / "nope" / "absent.py"
+    assert main([
+        "continuity", "start", "--task", "empty pack refuse",
+        "--mode", "explore", str(missing),
+    ]) == 2
+    assert "empty pack" in capsys.readouterr().err
 
 
 def test_continuity_start_rejects_path_not_approved_by_manifest(aegis_tmp, tmp_path, capsys):

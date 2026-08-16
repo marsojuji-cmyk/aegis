@@ -1,30 +1,30 @@
 # Aegis Project Memory
 
-## Architecture & Decisions
-- **Cost Provenance:** Implemented `cost_verification_report` to ensure every run has valid `cost_status` (`observed`, `verified_zero`) and `cost_source`. The cost provenance pipeline requires a continuous block of 5 audited runs without gaps to be considered `trustworthy_for_routing`.
-- **Routing Gate:** Defined in `src/aegis/outcomes.py`. `outcome_report()` now strictly requires:
-  - Trustworthy pipeline (`pipeline_trustworthy`)
-  - Complete cost data for the trial pairs (`cost_complete`)
-  - Strict token spend reduction (`cost_delta > 0`)
-  - Non-negative quality (`acceptance_delta >= 0`)
-  - Non-negative speed (`time_delta >= 0`)
+## Architecture
+- Product: pack → budget → land → continuity → aegis-gate → honest ledger.
+- Hermes path: normalize → policy → redact → allow|deny|require-review → `~/.aegis/guard_log.jsonl`.
+- Token pairs: `hermes_telemetry.record_pair`. `savings_percent` null unless admitted.
+- Sprints: `aegis sprint` → `~/.aegis/sprints.jsonl`. Board: `05_SPRINT_BOARD.md`.
+- Cursor: pack-first. `reuse=hit` → do not Read packed_paths. Capsule artifacts include pack id.
 
-## Completed Work
-- **DG06-DG07:** Built the cost verification pipeline and gating checks.
-- **DG08:** Locked the pipeline to require a gapless window (`audited == limit`).
-- **DG09:** Enforced the strict cost savings policy on routing eligibility.
-- **DG10 (Capstone):** Validated the full policy stack on a real production repair (adding `is_first_class` to `lang.py`). The trial achieved a cost savings but was correctly withheld due to incomplete legacy cost data (`cost_complete = False`) and average time regression across the sample.
+## Standing decisions
+- D-011: shadow on. No threshold tune. Q-011 closed.
+- D-013/D-017: live `aegis-gate` (`allow_tool_override=false`).
+- D-015/D-016: no pair / no `token_delta` until admission + named authorized model.
+- D-018/D-021: daemon bind/health; bindError preserved; failed start reaps.
+- D-019: R-012 complete at gate/admission only. R-014 and Q-012 parked.
+- D-020: Hermes org tools catalogued. `memory` is write. R-015: not domain-scoped.
+- D-022–D-024: file index, note graph, unified local search. No external API.
+- D-025: Sprint CLI. D-026: capsule pack_id + Cursor pack-first + empty-pack refuse.
+- D-027: Four Cursor skills via `aegis cursor --install` → `~/.agents/skills`.
+- Last ID: D-027. Q-013 locked-observe. No encoder.
+- HOLD (2026-08-16): OPERATE. `--gate` before code Read; hit → pack `cc5abe3f6d7983b35cdc70f3`. W34: one `aegis budget` only. Fail = habit/skill-load, not a module. No slices, invest, packer/floor/fan-out, embeddings, graph growth, or checkpoint/land/cortex backfill.
 
-## Open Follow-ups
-- Run subsequent production work under the tracking tools to naturally replace legacy runs (DG01-DG05) with cost-observed runs, eventually unlocking the routing authorization organically.
+## 2026-08-16
+- WP-3 / SP-013 unparked and shipped (D-026).
+- Reserve W33 throttle. No invest. Idea `idea_3fd3c23eef` closed with actual=0.
+- Operator loop accepted: reuse=hit, consumed unchanged, 8/41 (19.5%).
 
-## 2026-08-12 — Guard-pilot fold
-- Decision: `outcomes.*_pilot` is the only durable matched-pair SoT.
-- Folded/deleted: `src/aegis/pilot_runner.py`, `src/aegis/pilot_tools.py`, `tests/test_pilot_runner.py`.
-- Guard sequence: `tests/test_guard.py::test_guard_tool_pilot_flow` (tmp_path + `aegis_protect`).
-- Kept split: `membership_guard` (weekly reserve) vs `AegisGuard` (per-call).
-- Persist: sidecar `~/.aegis/guard_log.jsonl`. Not `ledger.record(kind="guard")`.
-- Evidence: pack `26edc935cd6abc164873895a`; pytest guard+outcomes+cli 23 passed.
-- Owner: Grok (govern) / GrokBuild (executed) / Hermes (this note).
-- Rollback: restore the three deleted files from workspace history.
-- Next: no product change. Reserve recovery only.
+## Rollback
+- Plugin: `hermes plugins disable aegis-gate`
+- D-026: revert `cursor_bridge.py` pack-first + `cli.py` continuity pack_id lookup

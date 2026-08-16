@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="aegis",
-    version="1.0.2",
+    version="1.1.1",
     description="Aegis JIT token supply chain",
     package_dir={"": "src"},
     packages=find_packages(where="src"),

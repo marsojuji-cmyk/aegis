@@ -25,6 +25,7 @@ Tune: austere · aggressive on drift · protective weekly reserve (≥80%).
 9. Optional live model route (mock/ollama/grok/claude/openai):
    `python3 -m aegis cursor --task "..." --model mock --mode implement <files>`
 10. Absolute Form: peer standard. No enthusiasm theater. Show naive vs Aegis cost when material.
+11. If the composer block says `reuse=hit`, do not Read `packed_paths`. Use the bento.
 
 ## Router daemon (optional)
 If `aegis serve` is running at http://127.0.0.1:8787, prefer it for OpenAI-compatible calls
