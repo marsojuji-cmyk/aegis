@@ -2,7 +2,7 @@
 
 **High-fidelity agency transfer protocol** — privileged final action under Budget-Aware **emergency** band (or on demand).
 
-Not a chat summary. A deterministic handoff so the next intelligence (Grok, OpenAI, Cursor, Antigravity) continues with zero rediscovery tax.
+Not a chat summary. A deterministic handoff so the next intelligence (Grok, OpenAI, Cursor, Antigravity) continues with zero rediscovery tax. Saint John post-planning liaison: bridges to action; do not disband the planning core after the report ([`docs/BASIN.md`](BASIN.md) stone 7).
 
 ## Trigger
 

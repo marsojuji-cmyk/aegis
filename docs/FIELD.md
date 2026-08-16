@@ -15,4 +15,14 @@
 9. Explore = signatures; implement = full target bodies (never skeleton-only on edit).
 10. When reserve cold: tools + reuse only; invest frozen.
 
+**Basin binding** — why under these laws, not a second SoT. See [`BASIN.md`](BASIN.md).
+The work-system is one basin; chat windows are jurisdictions, not units.
+Tokens are water: not free; pack/scrub before discharge; reserve is low-flow.
+Naive = single-purpose dam. Aegis = comprehensive: pack + reserve + implement-full + land + audit.
+Drift and unread dumps are oxygen debt. Dual SoT is fiber on the bed.
+`preflight`/`pack` first; explore = signatures; stay calm; do not over-design.
+Transition is the critical stage: `land` or the plan is ill-conceived. Continuity Bridge is post-planning liaison; never-shed.
+Display naive vs Aegis; do not total incommensurables. Prefer existing channels, smallest patch, hysteresis.
+Planning does not end at the report. Cost-avoid. Audit after invest.
+
 **Silence > noise. Micro-turns > dumps. Compound yield > cleverness.**

@@ -14,3 +14,10 @@ venv/
 *.log
 .aegis-local/
 apps/AegisMenu/.build/
+
+# generated measurement dumps — not product
+/baseline-report.json
+/baseline-report-v2.json
+/dryrun-report.json
+/report-adversarial.json
+/labels.json

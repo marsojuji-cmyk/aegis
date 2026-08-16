@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-08-16**: D-028 — operating authority. One active sprint. SP-018: align git ledger to claimed 1.1.1. Generated report dumps gitignored.
+
 - **2026-08-16**: D-027 — four Cursor skills (`pack-first`, `continuity`, `sprint`, `hermes`) + `--install` copy to `~/.agents/skills`.
 
 - **2026-08-16**: D-026 — capsule `artifacts` pack_id; Cursor pack-first reuse + `--gate`; empty continuity pack fails closed; `reuse=hit|miss` receipt.

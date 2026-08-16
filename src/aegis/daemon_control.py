@@ -9,9 +9,11 @@ PID/log/meta live under ~/.aegis/
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -106,38 +108,120 @@ def load_meta() -> Dict[str, Any]:
         return {}
 
 
-def daemon_status() -> Dict[str, Any]:
+def probe_bind(host: str, port: int) -> Dict[str, Any]:
+    """Preflight: can this process bind host:port? Does not leave a listener."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind((host, int(port)))
+        return {"ok": True, "state": "available", "host": host, "port": int(port)}
+    except OSError as exc:
+        err = getattr(exc, "errno", None)
+        if err == errno.EADDRINUSE:
+            state = "in_use"
+        elif err in (errno.EACCES, errno.EPERM):
+            state = "denied"
+        else:
+            state = "error"
+        return {
+            "ok": False,
+            "state": state,
+            "error": str(exc),
+            "errno": err,
+            "host": host,
+            "port": int(port),
+        }
+    finally:
+        try:
+            sock.close()
+        except OSError:
+            pass
+
+
+def _bind_error_of(status: Dict[str, Any]) -> Optional[str]:
+    if not isinstance(status, dict):
+        return None
+    raw = status.get("bind_error") or status.get("bindError")
+    if raw:
+        return str(raw)
+    meta = status.get("meta") or {}
+    raw = meta.get("bind_error") or meta.get("bindError")
+    return str(raw) if raw else None
+
+
+def wait_for_health(
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    timeout: float = 5.0,
+    interval: float = 0.05,
+) -> Dict[str, Any]:
+    """Poll until healthy | bind_failed | dead | timeout."""
+    deadline = time.time() + timeout
+    last: Dict[str, Any] = {}
+    probe_timeout = min(0.4, max(0.1, interval * 4))
+    while time.time() < deadline:
+        last = daemon_status(host=host, port=port, health_timeout=probe_timeout)
+        if last.get("running"):
+            return {"state": "healthy", "ok": True, **last}
+        bind_error = _bind_error_of(last)
+        if bind_error:
+            return {
+                "state": "bind_failed",
+                "ok": False,
+                "bind_error": bind_error,
+                "bindError": bind_error,
+                **last,
+            }
+        if last.get("pid") and not last.get("alive_process"):
+            return {"state": "dead", "ok": False, **last}
+        if not last.get("pid") and not last.get("alive_process") and last.get("meta") == {}:
+            # No process registered yet — keep polling until timeout, then dead.
+            pass
+        time.sleep(interval)
+    if last.get("alive_process"):
+        return {"state": "timeout", "ok": False, **last}
+    return {"state": "dead", "ok": False, **last}
+
+
+def daemon_status(
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    health_timeout: float = 2.0,
+) -> Dict[str, Any]:
     """Return running state + health probe."""
     pid = _read_pid()
     meta = load_meta()
-    host = meta.get("host") or "127.0.0.1"
-    port = int(meta.get("port") or 8787)
+    bind_error = meta.get("bind_error") or meta.get("bindError")
+    use_host = host or meta.get("host") or "127.0.0.1"
+    use_port = port if port is not None else int(meta.get("port") or 8787)
     alive = bool(pid and _pid_alive(pid))
     if pid and not alive:
-        # stale pid file
+        # stale pid file — keep bindError for classification before wipe
         _clear_meta()
         pid = None
         alive = False
+        meta = {"bind_error": bind_error, "bindError": bind_error} if bind_error else {}
     health: Dict[str, Any] = {"reachable": False}
     if alive:
         try:
-            url = f"http://{host}:{port}/healthz"
-            with urllib.request.urlopen(url, timeout=2) as resp:
+            url = f"http://{use_host}:{use_port}/healthz"
+            with urllib.request.urlopen(url, timeout=health_timeout) as resp:
                 health = json.loads(resp.read().decode("utf-8"))
                 health["reachable"] = True
                 health["http_status"] = resp.status
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as exc:
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError, json.JSONDecodeError) as exc:
             health = {"reachable": False, "error": str(exc)}
     return {
         "running": alive and health.get("reachable", False),
         "pid": pid,
         "alive_process": alive,
-        "host": host,
-        "port": port,
-        "url": f"http://{host}:{port}/v1",
+        "host": use_host,
+        "port": use_port,
+        "url": f"http://{use_host}:{use_port}/v1",
         "version": meta.get("version") or __version__,
         "log": str(daemon_log_path()),
         "health": health,
+        "bind_error": bind_error,
+        "bindError": bind_error,
         "meta": meta,
     }
 
@@ -165,7 +249,7 @@ def start_daemon(
             from aegis.launchd import bootstrap, is_installed, is_loaded, write_plist
 
             if is_installed():
-                st = daemon_status()
+                st = daemon_status(host=host, port=port)
                 if st["running"] and not force:
                     return {
                         "ok": True,
@@ -178,33 +262,29 @@ def start_daemon(
                     stop_daemon(respect_launchd=True)
                 write_plist(host, port)
                 boot = bootstrap()
-                for _ in range(20):
-                    time.sleep(0.15)
-                    st = daemon_status()
-                    if st.get("running"):
-                        return {
-                            "ok": True,
-                            "started": True,
-                            "message": "started via launchd",
-                            "managed_by": "launchd",
-                            "bootstrap": boot,
-                            **st,
-                        }
-                st = daemon_status()
+                waited = wait_for_health(host=host, port=port, timeout=4.0, interval=0.05)
+                if waited.get("state") == "healthy":
+                    return {
+                        "ok": True,
+                        "started": True,
+                        "message": "started via launchd",
+                        "managed_by": "launchd",
+                        "bootstrap": boot,
+                        **waited,
+                    }
                 return {
-                    "ok": bool(st.get("alive_process")),
-                    "started": True,
-                    "message": "launchd bootstrapped (health pending)"
-                    if st.get("alive_process")
-                    else "launchd start failed",
+                    "ok": False,
+                    "started": bool(waited.get("alive_process")),
+                    "message": f"launchd {waited.get('state')}",
+                    "startup": waited.get("state"),
                     "managed_by": "launchd",
                     "bootstrap": boot,
-                    **st,
+                    **{k: v for k, v in waited.items() if k not in {"ok", "state"}},
                 }
         except Exception:  # noqa: BLE001
             pass
 
-    st = daemon_status()
+    st = daemon_status(host=host, port=port)
     if st["running"] and not force:
         return {
             "ok": True,
@@ -212,8 +292,30 @@ def start_daemon(
             "message": "already running",
             **st,
         }
-    if st.get("alive_process") and force:
+    if st.get("alive_process"):
+        meta_port = int((st.get("meta") or {}).get("port") or st.get("port") or 0)
+        if not force:
+            return {
+                "ok": False,
+                "started": False,
+                "message": (
+                    "alive process holds control files; refuse second spawn "
+                    f"(pid={st.get('pid')} port={meta_port})"
+                ),
+                "conflict": True,
+                **st,
+            }
         stop_daemon(respect_launchd=False)
+
+    bind = probe_bind(host, port)
+    if not bind.get("ok"):
+        return {
+            "ok": False,
+            "started": False,
+            "message": f"bind preflight {bind.get('state')}",
+            "bind": bind,
+            **st,
+        }
 
     log_path = daemon_log_path()
     # Detached child: foreground serve writes to log
@@ -260,24 +362,23 @@ def start_daemon(
         pass
     _write_meta(host, port, proc.pid)
 
-    # wait briefly for health
-    for _ in range(20):
-        time.sleep(0.15)
-        st = daemon_status()
-        if st.get("running"):
-            return {
-                "ok": True,
-                "started": True,
-                "message": "started",
-                **st,
-            }
-    # process may still be starting
-    st = daemon_status()
+    waited = wait_for_health(host=host, port=port, timeout=4.0, interval=0.05)
+    if waited.get("state") == "healthy":
+        return {
+            "ok": True,
+            "started": True,
+            "message": "started",
+            **waited,
+        }
+    if waited.get("alive_process"):
+        stop_daemon(respect_launchd=False)
+        waited["reaped"] = True
     return {
-        "ok": bool(st.get("alive_process")),
-        "started": True,
-        "message": "started (health pending)" if st.get("alive_process") else "failed",
-        **st,
+        "ok": False,
+        "started": False,
+        "message": f"start {waited.get('state')}",
+        "startup": waited.get("state"),
+        **{k: v for k, v in waited.items() if k not in {"ok", "state"}},
     }
 
 
@@ -367,23 +468,18 @@ def restart_daemon(host: str = "127.0.0.1", port: int = 8787) -> Dict[str, Any]:
                 stop = stop_daemon(respect_launchd=True)
                 write_plist(host, port)  # refresh host/port
                 boot = bootstrap()
-                # wait for health
-                for _ in range(20):
-                    time.sleep(0.15)
-                    st = daemon_status()
-                    if st.get("running"):
-                        return {
-                            "stop": stop,
-                            "start": {"ok": True, "started": True, "message": "launchd", **st},
-                            "bootstrap": boot,
-                            "ok": True,
-                        }
-                st = daemon_status()
+                waited = wait_for_health(host=host, port=port, timeout=4.0, interval=0.05)
+                start = {
+                    "ok": waited.get("state") == "healthy",
+                    "started": waited.get("state") == "healthy",
+                    "message": "launchd" if waited.get("state") == "healthy" else f"launchd {waited.get('state')}",
+                    **waited,
+                }
                 return {
                     "stop": stop,
-                    "start": {"ok": bool(st.get("alive_process")), **st},
+                    "start": start,
                     "bootstrap": boot,
-                    "ok": bool(st.get("running") or st.get("alive_process")),
+                    "ok": bool(start.get("ok")),
                 }
         except Exception:  # noqa: BLE001
             pass

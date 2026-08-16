@@ -24,6 +24,7 @@ Updated: 2026-08-15. Empty file filled from existing evidence (R-013).
 | D-025 | active | Sprint ledger is CLI SoT (`aegis sprint`). Board is the human index. |
 | D-026 | active | Capsule pack_id + Cursor pack-first gate + empty-pack refuse. |
 | D-027 | active | Four Cursor skills installed via `aegis cursor --install`. |
+| D-028 | active | Aegis is shot-caller. Cursor-only for Aegis. One active sprint. Git ledger first. |
 
 ## Risks (03_RISK_REGISTER.md)
 
@@ -62,6 +63,7 @@ Updated: 2026-08-15. Empty file filled from existing evidence (R-013).
 | SP-015 | done | Cursor pack-first gate + hit/miss receipt. |
 | SP-016 | done | Empty continuity pack fails closed. |
 | SP-017 | done | Four Cursor skills + `--install`. |
+| SP-018 | active | Align git ledger to claimed 1.1.1. No new surface. |
 
 ## Continuity
 

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from aegis.paths import config_path, ensure_home
 
@@ -68,6 +69,8 @@ class AegisConfig:
     guard_audit_limit: int = 50
     guard_shadow_mode: bool = True
     guard_signal_shadow_mode: bool = True
+    # v1 Hermes notes pin. Empty = unset. Never fall through to DEFAULT_ROOT.
+    hermes_notes_root: str = ""
 
     def __post_init__(self) -> None:
         checkpoint = self.context_checkpoint_percent
@@ -166,9 +169,27 @@ def _format_toml(cfg: AegisConfig) -> str:
         f'guard_signal_preserve_keywords = "{cfg.guard_signal_preserve_keywords}"',
         f"guard_audit_limit = {cfg.guard_audit_limit}",
         f"guard_shadow_mode = {str(cfg.guard_shadow_mode).lower()}",
+        f'hermes_notes_root = "{cfg.hermes_notes_root}"',
         "",
     ]
     return "\n".join(lines)
+
+
+def resolve_hermes_notes_root(cfg: Optional[AegisConfig] = None) -> str:
+    """Env overrides config. Unset is empty — not DEFAULT_ROOT. Does not write config."""
+    env = (os.environ.get("AEGIS_HERMES_NOTES_ROOT") or "").strip()
+    if env:
+        return env
+    if cfg is not None:
+        return str(cfg.hermes_notes_root or "").strip()
+    path = config_path()
+    if not path.is_file():
+        return ""
+    try:
+        data = _parse_simple_toml(path.read_text(encoding="utf-8"))
+    except OSError:
+        return ""
+    return str(data.get("hermes_notes_root") or "").strip()
 
 
 def load_config() -> AegisConfig:

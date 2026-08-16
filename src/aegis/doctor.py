@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from aegis import __version__
@@ -16,9 +18,13 @@ from aegis.compat.legacy import (
     rules_path,
     skill_path,
 )
+from aegis.config import resolve_hermes_notes_root
+from aegis.hermes_index import DEFAULT_ROOT
 from aegis.paths import (
     aegis_home,
     fund_path,
+    hermes_index_files_path,
+    hermes_index_notes_path,
     ideas_path,
     ledger_path,
     packs_dir,
@@ -26,6 +32,141 @@ from aegis.paths import (
 
 
 Check = Tuple[str, bool, str]
+
+# FIRST_RELEASE.md path table. Classification only — not a config override.
+CANONICAL_HERMES_CORPUS = Path(
+    "/Users/a100/Library/Mobile Documents/iCloud~md~obsidian/Documents/AGIS"
+    "/AEGIS/05-Memory-Utility-Labs"
+)
+COMPLEMENTARY_LABS = Path("/Users/a100/Documents/Memory Utility Labs")
+
+
+def _resolve_existing(path: Path) -> Path:
+    try:
+        return path.expanduser().resolve()
+    except OSError:
+        return path.expanduser()
+
+
+def _under_or_equal(resolved: Path, anchor: Path) -> bool:
+    return resolved == anchor or anchor in resolved.parents
+
+
+def classify_hermes_root(root: str, pin: str = "") -> str:
+    """Label a root as canonical, complementary, empty_default_not_product, missing, or unknown."""
+    if not str(root or "").strip():
+        return "missing"
+    try:
+        resolved = Path(root).expanduser().resolve()
+    except OSError:
+        return "unknown"
+    labs = _resolve_existing(COMPLEMENTARY_LABS)
+    empty = _resolve_existing(Path(DEFAULT_ROOT))
+    if _under_or_equal(resolved, labs):
+        return "complementary"
+    if _under_or_equal(resolved, empty):
+        return "empty_default_not_product"
+    pin = str(pin or "").strip()
+    if pin:
+        if _under_or_equal(resolved, _resolve_existing(Path(pin))):
+            return "canonical"
+        return "unknown"
+    fallback = _resolve_existing(CANONICAL_HERMES_CORPUS)
+    if _under_or_equal(resolved, fallback):
+        return "canonical"
+    return "unknown"
+
+
+def _index_locator(path: Path, pin: str = "") -> Dict[str, Any]:
+    if not path.is_file():
+        return {"root": "", "count": 0, "role": "missing"}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"root": "", "count": 0, "role": "unknown"}
+    root = str(payload.get("root") or "")
+    count = payload.get("note_count")
+    if count is None:
+        count = payload.get("file_count") or 0
+    try:
+        n = int(count)
+    except (TypeError, ValueError):
+        n = 0
+    return {"root": root, "count": n, "role": classify_hermes_root(root, pin=pin)}
+
+
+def _path_presence(path: Path) -> str:
+    return "exists" if path.is_dir() else "missing"
+
+
+def hermes_rebuild_root_decision(root: str) -> Dict[str, Any]:
+    """Allow rebuild only for a pinned or FIRST_RELEASE-fallback canonical directory."""
+    pin = resolve_hermes_notes_root()
+    raw = str(root or "").strip() or DEFAULT_ROOT
+    role = classify_hermes_root(raw, pin=pin)
+    try:
+        resolved = str(Path(raw).expanduser().resolve())
+    except OSError:
+        return {
+            "allowed": False,
+            "role": "unknown",
+            "resolved": raw,
+            "reason": "root is not a usable path",
+        }
+    if role == "canonical" and Path(resolved).is_dir():
+        return {"allowed": True, "role": role, "resolved": resolved, "reason": ""}
+    reasons = {
+        "complementary": "Documents Labs is not the Hermes product corpus",
+        "empty_default_not_product": "empty default root is not a v1 rebuild target",
+        "missing": "rebuild root is missing",
+        "unknown": "rebuild root is not the pinned or canonical Hermes corpus",
+        "canonical": "rebuild root does not exist",
+    }
+    return {
+        "allowed": False,
+        "role": role,
+        "resolved": resolved,
+        "reason": reasons.get(role, "rebuild root is not allowed"),
+    }
+
+
+def hermes_v1_ready(pin: str, notes_root: str, notes_role: str) -> bool:
+    pin = str(pin or "").strip()
+    if not pin:
+        return False
+    if classify_hermes_root(pin, pin=pin) != "canonical":
+        return False
+    if not Path(pin).expanduser().is_dir():
+        return False
+    if notes_role != "canonical":
+        return False
+    try:
+        return _under_or_equal(
+            Path(notes_root).expanduser().resolve(),
+            _resolve_existing(Path(pin)),
+        )
+    except OSError:
+        return False
+
+
+def hermes_corpus_check() -> Check:
+    """Classify FIRST_RELEASE roots and on-disk index roles. Does not rebuild."""
+    pin = resolve_hermes_notes_root()
+    notes = _index_locator(hermes_index_notes_path(), pin=pin)
+    files = _index_locator(hermes_index_files_path(), pin=pin)
+    notes_role = str(notes["role"])
+    ok = notes_role in ("missing", "canonical")
+    ready = "yes" if hermes_v1_ready(pin, str(notes["root"]), notes_role) else "no"
+    pin_state = "set" if pin else "unset"
+    detail = (
+        f"canonical={_path_presence(CANONICAL_HERMES_CORPUS)} "
+        f"complementary={_path_presence(COMPLEMENTARY_LABS)} "
+        f"empty_default={_path_presence(Path(DEFAULT_ROOT))} "
+        f"notes={notes_role}:{notes['count']} "
+        f"files={files['role']}:{files['count']} "
+        f"pin={pin_state} v1_ready={ready}"
+    )
+    return ("hermes_corpus", ok, detail)
 
 
 def run_checks() -> List[Check]:
@@ -284,6 +425,7 @@ def run_checks() -> List[Check]:
         )
     )
     checks.append(("packs_dir", True, str(packs_dir())))
+    checks.append(hermes_corpus_check())
 
     exp = expense_report_path()
     checks.append(

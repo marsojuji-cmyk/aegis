@@ -8,6 +8,9 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
+import uuid
+import os
+import sys
 from typing import Any, Callable, Dict, List, Optional
 
 from aegis.config import AegisConfig
@@ -25,14 +28,29 @@ class AegisGuardError(Exception):
 
 @dataclasses.dataclass
 class GuardDecision:
-    timestamp: float
+    event_id: str
+    request_id: str
+    run_id: str
+    environment: str
+    provider: str
     rule: str
     action: str
-    status: str
+    would_block: bool
+    shadow_mode: bool
+    timestamp: float
+    timestamp_iso: str
     reason: str
+    redaction_version: str
     score: Optional[float] = None
     input_excerpt: Optional[str] = None
     output_excerpt: Optional[str] = None
+
+@dataclasses.dataclass
+class AegisGuardContext:
+    request_id: str = "unknown"
+    run_id: str = "unknown"
+    environment: str = "unknown"
+    provider: str = "unknown"
 
 
 @dataclasses.dataclass
@@ -44,8 +62,9 @@ class AegisState:
 
 
 class AegisGuard:
-    def __init__(self, config: AegisConfig) -> None:
+    def __init__(self, config: AegisConfig, context: Optional[AegisGuardContext] = None) -> None:
         self.config = config
+        self.guard_context = context or AegisGuardContext()
         self.state = AegisState()
         self._allowed_domains: List[str] = [
             d.strip()
@@ -67,12 +86,27 @@ class AegisGuard:
         input_excerpt: Optional[str] = None,
         output_excerpt: Optional[str] = None
     ) -> None:
+        ts = time.time()
+        shadow = self.config.guard_shadow_mode
+        if rule == "signal":
+            shadow = getattr(self.config, "guard_signal_shadow_mode", shadow)
+        
+        would_block = (action == "block" or status == "halt")
+
         decision = GuardDecision(
-            timestamp=time.time(),
+            event_id=str(uuid.uuid4()),
+            request_id=self.guard_context.request_id,
+            run_id=self.guard_context.run_id,
+            environment=self.guard_context.environment,
+            provider=self.guard_context.provider,
             rule=rule,
             action=action,
-            status=status,
+            would_block=would_block,
+            shadow_mode=shadow,
+            timestamp=ts,
+            timestamp_iso=time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(ts)),
             reason=reason,
+            redaction_version="1.0",
             score=score,
             input_excerpt=input_excerpt,
             output_excerpt=output_excerpt
@@ -89,24 +123,23 @@ class AegisGuard:
 
     def _persist_decision(self, decision: GuardDecision) -> None:
         """Append decision to persistent JSONL log file."""
+        # Enforce redaction contract before serialization
+        assert decision.redaction_version is not None, "redaction_version missing"
+        assert isinstance(decision.redaction_version, str), "redaction_version must be a string"
+        
+        # Serialize the record
+        serialized_record = json.dumps(dataclasses.asdict(decision))
+        
+        # Assert no sensitive payload properties leaked into the serialized shape
+        assert "raw_prompt" not in serialized_record, "raw_prompt leaked into telemetry"
+        assert "provider_payload" not in serialized_record, "provider_payload leaked into telemetry"
+
         try:
             # Ensure directory exists
             GUARD_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
             
-            log_entry = {
-                "timestamp": decision.timestamp,
-                "timestamp_iso": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(decision.timestamp)),
-                "rule": decision.rule,
-                "action": decision.action,
-                "status": decision.status,
-                "reason": decision.reason,
-                "score": decision.score,
-                "input_excerpt": decision.input_excerpt,
-                "output_excerpt": decision.output_excerpt,
-            }
-            
             with open(GUARD_LOG_PATH, "a") as f:
-                f.write(json.dumps(log_entry) + "\n")
+                f.write(serialized_record + "\n")
         except Exception as e:
             # Don't fail on logging errors, but warn
             import sys

@@ -109,6 +109,34 @@ def test_run_pipeline_enforces_request_output_cap(aegis_tmp):
     assert result.ok
 
 
+def test_pipeline_redaction_contract(aegis_tmp, monkeypatch):
+    from aegis.guard import GUARD_LOG_PATH
+    import json
+    
+    # Let's intercept the log write to our tmp directory
+    log_file = aegis_tmp / "guard_log.jsonl"
+    monkeypatch.setattr("aegis.guard.GUARD_LOG_PATH", log_file)
+
+    # Run standard pipeline
+    result = run_pipeline(
+        task="Test task with sensitive input MY_SECRET_PASSWORD", 
+        model="mock", 
+        skip_preflight=True
+    )
+    
+    assert result is not None
+    assert result.ok is True
+    
+    # Assert ledger record is emitted and sanitized
+    assert log_file.exists()
+    lines = log_file.read_text().strip().split("\n")
+    log_entry = json.loads(lines[-1])
+    
+    assert log_entry.get("redaction_version") == "1.0"
+    assert "raw_prompt" not in log_entry
+    assert "provider_payload" not in log_entry
+    assert "MY_SECRET_PASSWORD" not in lines[-1]
+
 def test_pipeline_transfers_before_context_exhaustion(aegis_tmp, monkeypatch):
     import aegis.router_pipeline as pipeline
     from aegis.config import load_config, save_config

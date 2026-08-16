@@ -1,0 +1,5 @@
+name: aegis-gate
+version: "1.0.0"
+description: "AEGIS control gate for Hermes tool calls. All tool execution must pass HermesWrapper."
+author: AEGIS
+hooks: []

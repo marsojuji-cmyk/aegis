@@ -17,8 +17,8 @@
 - D-022–D-024: file index, note graph, unified local search. No external API.
 - D-025: Sprint CLI. D-026: capsule pack_id + Cursor pack-first + empty-pack refuse.
 - D-027: Four Cursor skills via `aegis cursor --install` → `~/.agents/skills`.
-- Last ID: D-027. Q-013 locked-observe. No encoder.
-- HOLD (2026-08-16): OPERATE. `--gate` before code Read; hit → pack `cc5abe3f6d7983b35cdc70f3`. W34: one `aegis budget` only. Fail = habit/skill-load, not a module. No slices, invest, packer/floor/fan-out, embeddings, graph growth, or checkpoint/land/cortex backfill.
+- Last ID: D-028. Shot-caller: this agent on unfrozen work. Operator: Cursor only for Aegis. Freeze list binds. No encoder.
+- Pin set: `hermes_notes_root` = AGIS MUL. Shadow on. `v1_ready=yes`. SP-018: align git to claimed 1.1.1.
 
 ## 2026-08-16
 - WP-3 / SP-013 unparked and shipped (D-026).

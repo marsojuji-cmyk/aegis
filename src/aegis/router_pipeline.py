@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+import dataclasses
 import hashlib
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -18,7 +19,27 @@ from aegis.output_store import store_stats
 from aegis.preflight import run_preflight
 from aegis.providers import ProviderSpec, detect_provider, list_providers
 from aegis.router_client import chat_completion
-from aegis.guard import AegisGuard, aegis_protect
+from aegis.guard import AegisGuard, AegisGuardContext, aegis_protect
+
+class AegisConfigurationError(Exception):
+    pass
+
+VALID_ENVIRONMENTS = {"test", "development", "staging", "production"}
+
+def resolve_environment() -> str:
+    import os
+    import sys
+    configured = os.environ.get("AEGIS_ENV")
+    if configured:
+        if configured not in VALID_ENVIRONMENTS:
+            raise AegisConfigurationError(f"Unsupported AEGIS_ENV: {configured}")
+        return configured
+
+    if "pytest" in sys.modules:
+        return "test"
+
+    raise AegisConfigurationError("AEGIS_ENV must be explicitly set outside pytest")
+
 
 
 @dataclass
@@ -204,7 +225,56 @@ def run_pipeline(
             meta=preflight_meta,
         )
 
-    guard = AegisGuard(cfg)
+    # Build AegisGuardContext
+    import uuid
+    import os
+    import sys
+    req_id = str(uuid.uuid4())
+    
+    # 1. run_id: explicit AEGIS_RUN_ID, otherwise process-level UUID
+    _PROCESS_RUN_ID = os.environ.get("AEGIS_RUN_ID")
+    if not _PROCESS_RUN_ID:
+        _PROCESS_RUN_ID = getattr(sys.modules[__name__], '_LOCAL_PROCESS_ID', None)
+        if not _PROCESS_RUN_ID:
+            _PROCESS_RUN_ID = str(uuid.uuid4())
+            setattr(sys.modules[__name__], '_LOCAL_PROCESS_ID', _PROCESS_RUN_ID)
+            
+    run_id = _PROCESS_RUN_ID
+
+    # 2. environment: explicit AEGIS_ENV, otherwise validated default
+    try:
+        env = resolve_environment()
+    except AegisConfigurationError as exc:
+        return RunResult(
+            ok=False,
+            provider=prov.name,
+            model=model,
+            content="",
+            shrunk="",
+            pack_id=pack_id,
+            output_id=None,
+            output_reuse=False,
+            mock=prov.kind == "mock",
+            error=str(exc),
+            meta=preflight_meta,
+        )
+
+    ctx_dict = dataclasses.asdict(AegisGuardContext(
+        request_id=req_id,
+        run_id=run_id,
+        environment=env,
+        provider=prov.name
+    ))
+    
+    # Contract checks: assert only safe boundary fields exist
+    assert ctx_dict.get("request_id"), "request_id is required"
+    assert ctx_dict.get("run_id"), "run_id is required"
+    assert ctx_dict.get("environment") in {"test", "development", "staging", "production"}, f"Invalid environment: {env}"
+    assert "raw_prompt" not in ctx_dict, "raw_prompt must not be passed to guard context"
+    assert "provider_response" not in ctx_dict, "provider_response must not be passed to guard context"
+
+    ctx = AegisGuardContext(**ctx_dict)
+    guard = AegisGuard(cfg, context=ctx)
     protected_chat = aegis_protect(
         guard=guard,
         tool_name="chat_completion",
@@ -337,6 +407,8 @@ def run_pipeline(
         usage=usage,
         meta={
             **preflight_meta,
+            "request_id": req_id,
+            "run_id": run_id,
             "store": store_stats(),
             "landed": {
                 k: landed.get(k)

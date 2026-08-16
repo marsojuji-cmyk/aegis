@@ -344,10 +344,14 @@ class AegisRouterHandler(BaseHTTPRequestHandler):
             self._write_json(502, {"error": {"message": str(exc), "type": "aegis_router"}})
 
 
+class _RouterServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+
+
 def serve(host: str = "127.0.0.1", port: int = 8787) -> ThreadingHTTPServer:
     _DAEMON_STATE["host"] = host
     _DAEMON_STATE["port"] = port
-    httpd = ThreadingHTTPServer((host, port), AegisRouterHandler)
+    httpd = _RouterServer((host, port), AegisRouterHandler)
     return httpd
 
 
@@ -372,7 +376,17 @@ def serve_forever(host: str = "127.0.0.1", port: int = 8787) -> None:
     except Exception as exc:  # noqa: BLE001
         _DAEMON_STATE["intel"] = {"ok": False, "error": str(exc)}
 
-    httpd = serve(host, port)
+    try:
+        httpd = serve(host, port)
+    except OSError as exc:
+        err = str(exc)
+        write_runtime_meta(
+            host, port, pid, bind_ok=False, bind_error=err, bindError=err
+        )
+        print(f"[AEGIS ROUTER] bindError {host}:{port}: {exc}", flush=True)
+        clear_meta_if_pid(pid)
+        raise SystemExit(1) from exc
+    write_runtime_meta(host, port, pid, bind_ok=True)
     cleaned = {"done": False}
 
     def _cleanup(*_args: Any) -> None:

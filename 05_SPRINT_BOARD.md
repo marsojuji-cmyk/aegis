@@ -5,6 +5,7 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 
 | ID | Status | Title | Blocked by | Links |
 |---|---|---|---|---|
+| SP-018 | active | Align git ledger to claimed 1.1.1 | — | — |
 | SP-011 | blocked | Q-011 require-review hard block | D-011, Q-011 | D-011, Q-011 |
 | SP-014 | blocked | R-015 memory domain scope | R-015, D-020 | D-020, R-015 |
 | SP-010 | parked | R-014 admitted token pair | D-015, D-016, D-019, Q-012, R-014 | D-015, D-016, D-019, R-014, Q-012 |
@@ -18,6 +19,14 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 | SP-017 | done | Four Cursor skills + install | — | — |
 
 ## Detail
+
+### SP-018 — Align git ledger to claimed 1.1.1
+
+- status: `active`
+- goal: Commit the product remainder already claimed by doctor/registers. Ignore measurement dumps. No new surface. No freeze thaw.
+- T-1 [done]: Classify dirty tree vs HEAD
+- T-2 [done]: Gitignore generated report dumps
+- T-3 [todo]: Commit product remainder only (hermes plugin/skills/tests + claimed daemon/doctor/guard)
 
 ### SP-011 — Q-011 require-review hard block
 
