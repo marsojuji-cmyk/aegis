@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-08-16**: D-029 — driver/car/track flow. Perplexity is research-only. Skill `aegis-flow` + Cursor rules. Fifth skill via `--install`.
+
 - **2026-08-16**: D-028 — operating authority. Cursor-only for Aegis. SP-018 closed: git `80f179e` matches claimed 1.1.1. Generated dumps gitignored.
 
 - **2026-08-16**: D-027 — four Cursor skills (`pack-first`, `continuity`, `sprint`, `hermes`) + `--install` copy to `~/.agents/skills`.

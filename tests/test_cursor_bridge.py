@@ -35,7 +35,13 @@ def test_install_cursorrules(aegis_tmp):
     assert res["count"] >= 6
     assert (target / ".cursorrules").is_file()
     assert (target / ".cursorignore").is_file()
-    for name in ("aegis-pack-first", "aegis-continuity", "aegis-sprint", "aegis-hermes"):
+    for name in (
+        "aegis-pack-first",
+        "aegis-continuity",
+        "aegis-sprint",
+        "aegis-hermes",
+        "aegis-flow",
+    ):
         skill = target / "skills" / name / "SKILL.md"
         assert skill.is_file(), name
         text = skill.read_text(encoding="utf-8")
@@ -43,6 +49,8 @@ def test_install_cursorrules(aegis_tmp):
     text = (target / ".cursorrules").read_text()
     assert "aegis cursor" in text.lower() or "AEGIS" in text
     assert "outputs" in text
+    assert "Perplexity" in text
+    assert "aegis-flow" in text
     
     import os
     from pathlib import Path
@@ -120,7 +128,7 @@ def test_install_cursor_skills_to_agents_dir(aegis_tmp, tmp_path, monkeypatch):
     dest = tmp_path / "agents-skills"
     monkeypatch.setenv("AEGIS_AGENTS_SKILLS", str(dest))
     written = install_cursor_skills()
-    assert len(written) == 4
+    assert len(written) == 5
     assert {p.name for p in dest.iterdir()} == set(CURSOR_SKILL_NAMES)
 
 

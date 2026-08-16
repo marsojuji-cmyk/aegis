@@ -96,7 +96,7 @@ Release-candidate transition needs separate evidence for: clean install and doct
 - Product version identifiers are 1.1.1. Hermes plugin identity remains 1.0.0.
 - Continuity start writes `pack_id` into capsule `artifacts`. Empty packs fail closed.
 - Doctor classifies Hermes/AGIS roots (`hermes_corpus`). Empty-default or Documents Labs notes indexes fail the check; a missing index is labeled, not treated as product-ready. v1 pin is `hermes_notes_root` or `AEGIS_HERMES_NOTES_ROOT` (package default empty). `DEFAULT_ROOT` is never the v1 pin. Unset pin may still classify this-host AGIS notes as canonical with `v1_ready=no`. `note_graph` rebuild allows only that pin or the FIRST_RELEASE AGIS fallback; Labs, empty default, and arbitrary roots are `PATH_NOT_ALLOWED`. A new process may load `notes.json`+`graph.json` only when schema, signature, and root match that pin/fallback; `files.json` is never a notes graph.
-- `aegis hermes search|resolve` is a thin read-only CLI over existing search/resolve. Hermes skills remain `invoke()` + SKILL.md. Cursor skills (`aegis-pack-first|continuity|sprint|hermes`) install via `aegis cursor --install` into `~/.agents/skills`.
+- `aegis hermes search|resolve` is a thin read-only CLI over existing search/resolve. Hermes skills remain `invoke()` + SKILL.md. Cursor skills (`aegis-pack-first|continuity|sprint|hermes|flow`) install via `aegis cursor --install` into `~/.agents/skills`.
 - Persistent retrieval tests bind to the iCloud AGIS path on this machine.
 - Pack/ledger savings are local counterfactual (`chars/4`), not `savings_percent`.
 

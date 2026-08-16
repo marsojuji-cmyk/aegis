@@ -27,6 +27,10 @@ Tune: austere · aggressive on drift · protective weekly reserve (≥80%).
 10. Absolute Form: peer standard. No enthusiasm theater. Show naive vs Aegis cost when material.
 11. If the composer block says `reuse=hit`, do not Read `packed_paths`. Use the bento.
 
+## Flow (driver / car / track)
+Driver = you. Car = Cursor (execute) + Perplexity (research). Track = One (repo + ~/.aegis + AGIS MUL).
+Track first (`aegis hermes search`). Perplexity only for a live/external miss. Perplexity never edits. Cursor judges and lands. One research query. Freeze list unchanged. Skill: `aegis-flow`.
+
 ## Router daemon (optional)
 If `aegis serve` is running at http://127.0.0.1:8787, prefer it for OpenAI-compatible calls
 with body.aegis.pipeline=true and body.aegis.paths=[...].

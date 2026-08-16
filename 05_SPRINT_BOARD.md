@@ -17,6 +17,7 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 | SP-016 | done | Refuse empty continuity packs | — | — |
 | SP-017 | done | Four Cursor skills + install | — | — |
 | SP-018 | done | Align git ledger to claimed 1.1.1 | — | — |
+| SP-019 | done | Driver/car/track flow + aegis-flow skill | — | — |
 
 ## Detail
 
@@ -110,3 +111,10 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 - T-1 [done]: Classify dirty tree vs HEAD
 - T-2 [done]: Gitignore generated report dumps
 - T-3 [done]: Commit product remainder only (hermes plugin/skills/tests + claimed daemon/doctor/guard)
+
+### SP-019 — Driver/car/track flow + aegis-flow skill
+
+- status: `done`
+- goal: Perplexity is research-only. Track first. Fifth Cursor skill. No Perplexity client.
+- verified: Skill+CURSORRULES+install; Perplexity never edits.
+- evidence: tests/test_cursor_bridge.py + ~/.agents/skills/aegis-flow

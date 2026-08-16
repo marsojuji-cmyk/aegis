@@ -49,6 +49,10 @@ Tune: austere · aggressive on drift · protective weekly reserve (≥80%).
 10. Absolute Form: peer standard. No enthusiasm theater. Show naive vs Aegis cost when material.
 11. If the composer block says `reuse=hit`, do not Read `packed_paths`. Use the bento.
 
+## Flow (driver / car / track)
+Driver = you. Car = Cursor (execute) + Perplexity (research). Track = One (repo + ~/.aegis + AGIS MUL).
+Track first (`aegis hermes search`). Perplexity only for a live/external miss. Perplexity never edits. Cursor judges and lands. One research query. Freeze list unchanged. Skill: `aegis-flow`.
+
 ## Router daemon (optional)
 If `aegis serve` is running at http://127.0.0.1:8787, prefer it for OpenAI-compatible calls
 with body.aegis.pipeline=true and body.aegis.paths=[...].
@@ -96,6 +100,7 @@ CURSOR_SKILL_NAMES = (
     "aegis-continuity",
     "aegis-sprint",
     "aegis-hermes",
+    "aegis-flow",
 )
 
 
@@ -115,7 +120,7 @@ def agents_skills_dir() -> Path:
 
 
 def install_cursor_skills(*, dest: Optional[Path] = None) -> List[str]:
-    """Copy the four Cursor skills from the repo SoT into an agents skills dir."""
+    """Copy Cursor skills from the repo SoT into an agents skills dir."""
     src_root = cursor_skills_src()
     dest_root = Path(dest) if dest is not None else agents_skills_dir()
     written: List[str] = []
@@ -144,7 +149,7 @@ def install_cursor_rules(
     *,
     also_home: bool = False,
 ) -> Dict[str, Any]:
-    """Write .cursorrules + .cursorignore + the four Cursor skills."""
+    """Write .cursorrules + .cursorignore + Cursor skills."""
     written: List[str] = []
     dirs: List[Path] = []
     if target_dir:

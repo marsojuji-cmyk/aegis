@@ -17,7 +17,8 @@
 - D-022–D-024: file index, note graph, unified local search. No external API.
 - D-025: Sprint CLI. D-026: capsule pack_id + Cursor pack-first + empty-pack refuse.
 - D-027: Four Cursor skills via `aegis cursor --install` → `~/.agents/skills`.
-- Last ID: D-028. Shot-caller: this agent on unfrozen work. Operator: Cursor only for Aegis. Freeze list binds. No encoder.
+- D-029: Flow. Driver / Cursor+Perplexity car / One track. Skill `aegis-flow`.
+- Last ID: D-029. Shot-caller: this agent on unfrozen work. Operator: Cursor only for Aegis code. Perplexity = research. Freeze list binds. No encoder.
 - Pin set: `hermes_notes_root` = AGIS MUL. Shadow on. `v1_ready=yes`. Git `80f179e` matches claimed 1.1.1. Scratch left untracked.
 
 ## 2026-08-16
@@ -28,3 +29,4 @@
 ## Rollback
 - Plugin: `hermes plugins disable aegis-gate`
 - D-026: revert `cursor_bridge.py` pack-first + `cli.py` continuity pack_id lookup
+- D-029: remove `aegis-flow` from `CURSOR_SKILL_NAMES` + Flow section in CURSORRULES
