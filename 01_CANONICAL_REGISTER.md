@@ -63,7 +63,7 @@ Updated: 2026-08-15. Empty file filled from existing evidence (R-013).
 | SP-015 | done | Cursor pack-first gate + hit/miss receipt. |
 | SP-016 | done | Empty continuity pack fails closed. |
 | SP-017 | done | Four Cursor skills + `--install`. |
-| SP-018 | active | Align git ledger to claimed 1.1.1. No new surface. |
+| SP-018 | done | Align git ledger to claimed 1.1.1. No new surface. |
 
 ## Continuity
 

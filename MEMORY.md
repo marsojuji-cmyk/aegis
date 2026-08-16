@@ -18,7 +18,7 @@
 - D-025: Sprint CLI. D-026: capsule pack_id + Cursor pack-first + empty-pack refuse.
 - D-027: Four Cursor skills via `aegis cursor --install` → `~/.agents/skills`.
 - Last ID: D-028. Shot-caller: this agent on unfrozen work. Operator: Cursor only for Aegis. Freeze list binds. No encoder.
-- Pin set: `hermes_notes_root` = AGIS MUL. Shadow on. `v1_ready=yes`. SP-018: align git to claimed 1.1.1.
+- Pin set: `hermes_notes_root` = AGIS MUL. Shadow on. `v1_ready=yes`. Git `80f179e` matches claimed 1.1.1. Scratch left untracked.
 
 ## 2026-08-16
 - WP-3 / SP-013 unparked and shipped (D-026).
