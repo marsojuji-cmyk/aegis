@@ -6,6 +6,8 @@ import json
 from aegis.cost_provenance import provider_window_status
 from aegis.outcomes import outcome_report
 from aegis.receipt_collect import (
+    PAIR_WORKFLOW,
+    collect_matched_pairs,
     collect_receipts,
     extract_billed_usd,
     load_api_key,
@@ -88,3 +90,27 @@ def test_collect_receipts_cli_probe_never_authorizes(monkeypatch, capsys):
     assert payload["routing_authorized"] is False
     assert payload["mode"] == "probe"
     assert payload["blocked"] == "missing_key"
+
+
+def test_matched_pairs_do_not_authorize_without_cost_delta(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGIS_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("NOUS_API_KEY", "sk-nous-test-rotated")
+
+    def fake_post(url, headers, body):
+        return {
+            "id": "chatcmpl-pair",
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {"prompt_tokens": 8, "completion_tokens": 1, "cost": 0.00004},
+        }
+
+    out = collect_matched_pairs(execute=True, pairs=10, post_json=fake_post)
+    assert out["ok"] is True
+    assert out["rows_written"] == 20
+    assert out["paired_tasks"] == 10
+    assert out["routing_authorized"] is False
+    assert out["outcome_routing_authorized"] is False
+    report = outcome_report(workflow=PAIR_WORKFLOW)
+    assert report["paired_tasks"] == 10
+    assert report["cost_comparison_complete"] is True
+    assert report["routing_authorized"] is False
+    assert provider_window_status(limit=5)["provider_window_ready"] is True

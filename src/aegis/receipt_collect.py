@@ -21,8 +21,10 @@ from aegis.outcomes import outcome_report, record_outcome
 DEFAULT_BASE_URL = "https://inference-api.nousresearch.com/v1"
 DEFAULT_MODEL = "deepseek/deepseek-v4-pro"
 DEFAULT_COUNT = 5
+DEFAULT_PAIRS = 10
 COST_SOURCE = "nous_api"
 WORKFLOW = "provider_receipt_window"
+PAIR_WORKFLOW = "matched_provider_pairs"
 KEY_ENVS = ("NOUS_API_KEY", "AGIS_API_KEY")
 # SHA-256 of a Nous key pasted into chat 2026-08-18. Plaintext is not stored.
 BURNED_KEY_SHA256 = frozenset(
@@ -144,6 +146,56 @@ def _post_json(
         raise RuntimeError(f"connect failed {url}: {exc}") from exc
 
 
+def _row_summary(row: Mapping[str, Any]) -> Dict[str, Any]:
+    return {
+        "task_id": row["task_id"],
+        "variant": row.get("variant"),
+        "cost_usd": row["cost_usd"],
+        "cost_status": row["cost_status"],
+        "cost_source": row["cost_source"],
+        "elapsed_seconds": row.get("elapsed_seconds"),
+    }
+
+
+def _bill_and_record(
+    poster: PostJson,
+    url: str,
+    headers: Mapping[str, str],
+    model_id: str,
+    *,
+    task_id: str,
+    variant: str,
+    workflow: str,
+) -> Dict[str, Any]:
+    body = {
+        "model": model_id,
+        "messages": [{"role": "user", "content": "Reply with one word: ok"}],
+        "max_tokens": 8,
+        "temperature": 0,
+    }
+    started = time.perf_counter()
+    payload = poster(url, headers, body)
+    elapsed = time.perf_counter() - started
+    usd = extract_billed_usd(payload if isinstance(payload, Mapping) else {})
+    if usd is None:
+        raise RuntimeError("billed USD missing; refusing token-rate estimate")
+    status_label = "verified_zero" if usd == 0.0 else "observed"
+    request_id = ""
+    if isinstance(payload, Mapping):
+        request_id = str(payload.get("id") or "")
+    return record_outcome(
+        task_id=task_id,
+        variant=variant,
+        accepted=True,
+        elapsed_seconds=elapsed,
+        cost_usd=usd,
+        cost_status=status_label,
+        cost_source=COST_SOURCE,
+        workflow=workflow,
+        notes=f"model={model_id} request_id={request_id}".strip(),
+    )
+
+
 def collect_receipts(
     *,
     execute: bool = False,
@@ -187,46 +239,17 @@ def collect_receipts(
         "Authorization": f"Bearer {loaded['key']}",
     }
     for idx in range(count):
-        body = {
-            "model": model_id,
-            "messages": [{"role": "user", "content": "Reply with one word: ok"}],
-            "max_tokens": 8,
-            "temperature": 0,
-        }
-        started = time.perf_counter()
         try:
-            payload = poster(url, headers, body)
+            row = _bill_and_record(
+                poster, url, headers, model_id,
+                task_id=f"RR037-{stamp}-{idx:02d}",
+                variant="baseline",
+                workflow=WORKFLOW,
+            )
         except Exception as exc:
             errors.append(f"call_{idx}: {exc}")
             break
-        elapsed = time.perf_counter() - started
-        usd = extract_billed_usd(payload if isinstance(payload, Mapping) else {})
-        if usd is None:
-            errors.append(f"call_{idx}: billed USD missing; refusing token-rate estimate")
-            break
-        status_label = "verified_zero" if usd == 0.0 else "observed"
-        request_id = ""
-        if isinstance(payload, Mapping):
-            request_id = str(payload.get("id") or "")
-        row = record_outcome(
-            task_id=f"RR037-{stamp}-{idx:02d}",
-            variant="baseline",
-            accepted=True,
-            elapsed_seconds=elapsed,
-            cost_usd=usd,
-            cost_status=status_label,
-            cost_source=COST_SOURCE,
-            workflow=WORKFLOW,
-            notes=f"model={model_id} request_id={request_id}".strip(),
-        )
-        written.append(
-            {
-                "task_id": row["task_id"],
-                "cost_usd": row["cost_usd"],
-                "cost_status": row["cost_status"],
-                "cost_source": row["cost_source"],
-            }
-        )
+        written.append(_row_summary(row))
     window = provider_window_status(limit=DEFAULT_COUNT)
     report = outcome_report()
     status["ok"] = len(written) == count and not errors
@@ -240,4 +263,81 @@ def collect_receipts(
     if not status["ok"] and not status.get("blocked"):
         status["blocked"] = "incomplete_window"
         status["reason"] = errors[-1] if errors else "wrote fewer than requested billed rows"
+    return status
+
+
+def collect_matched_pairs(
+    *,
+    execute: bool = False,
+    pairs: int = DEFAULT_PAIRS,
+    model: str = "",
+    environ: Optional[Mapping[str, str]] = None,
+    post_json: Optional[PostJson] = None,
+) -> Dict[str, Any]:
+    """Bill baseline+governed for N tasks. Does not authorize routing.
+
+    Same named model on both sides. Cost delta is observed, not staged.
+    Uses workflow matched_provider_pairs so incomplete production pairs stay isolated.
+    """
+    status = probe(environ)
+    status["count"] = pairs
+    status["pairs"] = pairs
+    status["workflow"] = PAIR_WORKFLOW
+    if model.strip():
+        status["model"] = model.strip()
+    if not execute:
+        status["mode"] = "probe"
+        return status
+    status["mode"] = "execute_pairs"
+    if not status["ok"]:
+        return status
+    loaded = load_api_key(environ)
+    if not loaded["ok"]:
+        status.update({k: loaded[k] for k in ("ok", "blocked", "reason", "env_name")})
+        return status
+    if pairs <= 0:
+        status["ok"] = False
+        status["blocked"] = "invalid_count"
+        status["reason"] = "pairs must be > 0"
+        return status
+    base = (os.environ.get("NOUS_BASE_URL") or os.environ.get("AGIS_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
+    url = base + "/chat/completions"
+    model_id = status["model"]
+    poster = post_json or (lambda u, h, b: _post_json(u, h, b))
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    written: List[Dict[str, Any]] = []
+    errors: List[str] = []
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {loaded['key']}",
+    }
+    for idx in range(pairs):
+        task_id = f"MP037-{stamp}-{idx:02d}"
+        for variant in ("baseline", "governed"):
+            try:
+                row = _bill_and_record(
+                    poster, url, headers, model_id,
+                    task_id=task_id, variant=variant, workflow=PAIR_WORKFLOW,
+                )
+            except Exception as exc:
+                errors.append(f"{task_id}/{variant}: {exc}")
+                break
+            written.append(_row_summary(row))
+        if errors:
+            break
+    window = provider_window_status(limit=DEFAULT_COUNT)
+    report = outcome_report(workflow=PAIR_WORKFLOW)
+    status["ok"] = len(written) == pairs * 2 and not errors
+    status["rows_written"] = len(written)
+    status["rows"] = written
+    status["errors"] = errors
+    status["paired_tasks"] = report.get("paired_tasks")
+    status["pair_decision"] = report.get("decision")
+    status["provider_window_ready"] = window["provider_window_ready"]
+    status["trustworthy_for_routing"] = window["trustworthy_for_routing"]
+    status["routing_authorized"] = False
+    status["outcome_routing_authorized"] = bool(report.get("routing_authorized"))
+    if not status["ok"] and not status.get("blocked"):
+        status["blocked"] = "incomplete_pairs"
+        status["reason"] = errors[-1] if errors else "wrote fewer than requested billed pairs"
     return status

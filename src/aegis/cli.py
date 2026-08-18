@@ -650,12 +650,18 @@ def _cmd_outcome(args: argparse.Namespace) -> int:
         print(json.dumps(window, indent=2, default=str))
         return 0
     if args.outcome_action == "collect-receipts":
-        from aegis.receipt_collect import collect_receipts
-        payload = collect_receipts(
-            execute=bool(getattr(args, "execute", False)),
-            count=int(getattr(args, "count", 5)),
-            model=str(getattr(args, "model", "") or ""),
-        )
+        from aegis.receipt_collect import collect_matched_pairs, collect_receipts
+        pairs = int(getattr(args, "pairs", 0) or 0)
+        execute = bool(getattr(args, "execute", False))
+        model = str(getattr(args, "model", "") or "")
+        if pairs > 0:
+            payload = collect_matched_pairs(execute=execute, pairs=pairs, model=model)
+        else:
+            payload = collect_receipts(
+                execute=execute,
+                count=int(getattr(args, "count", 5)),
+                model=model,
+            )
         payload["routing_authorized"] = False
         print(json.dumps(payload, indent=2, default=str))
         return 0 if payload.get("ok") else 1
@@ -2493,6 +2499,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Bill the named model and append observed rows. Default is probe-only.",
     )
     oc_collect.add_argument("--count", type=int, default=5)
+    oc_collect.add_argument(
+        "--pairs",
+        type=int,
+        default=0,
+        help="If >0 with --execute, bill this many baseline/governed pairs (not a routing trial)",
+    )
     oc_collect.add_argument("--model", default="", help="Override AEGIS_RECEIPT_MODEL / deepseek-v4-pro")
     oc_collect.set_defaults(func=_cmd_outcome)
 

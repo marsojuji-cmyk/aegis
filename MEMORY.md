@@ -13,12 +13,12 @@
 - D-030 MUL 9→20; D-033/034 20→32. Graph frozen. No MUL thaw D-036/037.
 - D-031: 1.2.0 OS. Overlay ≠ SKU. `doctor --product` second-machine floor.
 - D-032: covering reuse + hash verify. `os ready`. Freeze+honest yield on doctor.
-- D-036: five consecutive real receipts = window ready, not routing. Live window READY (5× nous_api).
-- D-037: collect-receipts via Hermes Nous proxy. Live 2026-08-18T22:08:31Z wrote 5 observed rows. Routing still withheld.
+- D-036: five consecutive real receipts = window ready, not routing. Live window READY.
+- D-038: 10 billed matched pairs (`matched_provider_pairs`), same model. Δcost=0. Routing withheld.
 - M-001..M-014: budget modules. Ghost enrichment removed. `opt_in` fail-closed.
 - Price: replacement-cost quote. Exclusive mid ~$107k. Hosted not a SKU.
 - Next 30d (W34 75.68%): Path A $45k if named buyer in 14d; else Path B reuse to 50%.
-- Last ID: D-037 / M-014. Freeze list binds except named graph set. No encoder.
+- Last ID: D-038 / M-014. Freeze list binds except named graph set. No encoder.
 - Pin: `hermes_notes_root` = AGIS MUL. Shadow on. Auto commit+push on a verified unit.
 
 ## Rollback
@@ -28,5 +28,5 @@
 - D-033: delete 8 notes; CORPUS=20. D-034: delete 4 notes + classifier; CORPUS=28.
 - D-035: revert verify-cost to `cost_verification_report` JSON only.
 - D-036: revert `provider_window_status` + `provider_window_ready`.
-- D-037: revert `receipt_collect.py` + collect-receipts CLI; withhold unchanged.
+- D-038: revert `--pairs` / `collect_matched_pairs`; withhold unchanged.
 - D-031: revert kernel/portable/api/yield + 1.1.1. D-032: revert covering-pack + freeze doctor.

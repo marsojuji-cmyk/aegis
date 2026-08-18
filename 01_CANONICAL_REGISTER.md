@@ -34,6 +34,7 @@ Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 | D-035 | active | verify-cost CLI emits classifications. routing_authorized forced false. |
 | D-036 | active | Five consecutive provider receipts are a ready precondition. Routing still withheld. |
 | D-037 | active | collect-receipts CLI: env key + billed USD only. Probe default. Routing still withheld. |
+| D-038 | active | 10 billed matched pairs, same model. Δcost=0 so routing still withheld. |
 
 ## Risks (03_RISK_REGISTER.md)
 
