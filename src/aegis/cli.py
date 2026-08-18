@@ -2172,6 +2172,35 @@ def _cmd_yield(args: argparse.Namespace) -> int:
     return _print_kernel(payload, True)
 
 
+def _cmd_decisions(args: argparse.Namespace) -> int:
+    from aegis.decisions import health, measure_naive_vs_pack
+
+    _prepare_read()
+    action = getattr(args, "decisions_action", "health") or "health"
+    if action == "measure":
+        payload = measure_naive_vs_pack(
+            args.path,
+            model=args.model,
+            provider=args.provider,
+        )
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0 if payload.get("ok") else 1
+    report = health()
+    if args.json:
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+    else:
+        print(f"Aegis decisions  v{report.get('version')}  ok={report.get('ok')}")
+        if report.get("repair"):
+            print(f"  repair: {', '.join(report['repair'])}")
+        for row in report.get("decisions") or []:
+            mark = "OK" if row.get("aligned") else "FIX"
+            print(
+                f"  [{mark:3}] {row['id']:6} {row['verdict']:11} {row['evidence']}"
+            )
+            print(f"         → {row['action']}")
+    return 0 if report.get("ok") else 1
+
+
 def _parse_mode(value: str) -> str:
     from aegis.pack_cache import MODE_ALIASES, normalize_mode
 
@@ -2921,6 +2950,17 @@ def build_parser() -> argparse.ArgumentParser:
     yld_pr.add_argument("path", nargs="+")
     yld_pr.add_argument("--task", default="yield-prove")
     yld_pr.set_defaults(func=_cmd_yield)
+
+    dec = sub.add_parser("decisions", help="Health of every D- in the canonical register")
+    dec_sub = dec.add_subparsers(dest="decisions_action", required=True)
+    dec_h = dec_sub.add_parser("health", help="Probe D-011..D-031")
+    dec_h.add_argument("--json", action="store_true")
+    dec_h.set_defaults(func=_cmd_decisions)
+    dec_m = dec_sub.add_parser("measure", help="Authorized Hermes naive vs pack usage")
+    dec_m.add_argument("path")
+    dec_m.add_argument("--model", default="xiaomi/mimo-v2.5-pro")
+    dec_m.add_argument("--provider", default="nous")
+    dec_m.set_defaults(func=_cmd_decisions)
 
     return p
 

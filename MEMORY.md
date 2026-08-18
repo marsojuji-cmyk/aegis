@@ -9,7 +9,7 @@
 - Cursor pack-first. `reuse=hit` → do not Read packed_paths. Capsules store pack id.
 
 ## Standing decisions
-- D-011: shadow on. No threshold tune. Q-011 closed.
+- D-011: shadow on. No threshold tune. Q-011 open (blocked).
 - D-013/D-017: live `aegis-gate` (`allow_tool_override=false`).
 - D-015/D-016: no pair / no `token_delta` until admission + named authorized model.
 - D-018/D-021: daemon bind/health; bindError preserved; failed start reaps.

@@ -10,7 +10,7 @@ Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 | D-011 | active | Shadow-mode observation only. No hard-block / threshold tune. |
 | D-012 | active | 100-request baseline archived; official thresholds blocked. |
 | D-013 | active | Hermes tool requests pass `HermesWrapper` (allow/deny/require-review). |
-| D-014 | superseded-in-part | Enable path defined; later disabled; re-enabled D-017. |
+| D-014 | superseded | Enable path defined; live enable is D-017. |
 | D-015 | active | Admission gate required before any token_delta. |
 | D-016 | active | No LLM pair until user names model+provider. |
 | D-017 | active | 2026-08-15: `aegis-gate` enabled; live middleware allow+deny proven. |

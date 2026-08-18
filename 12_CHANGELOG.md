@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-08-18**: Decision health CLI (`aegis decisions health|measure`). D-021 daemon restarted to 1.2.0. D-030 MUL index rebuilt 9→20. D-014 marked superseded.
+
 - **2026-08-18**: D-031 — Master Aegis 1.2.0 product OS. Agent kernel, portable schema-2 home, frozen `/v1`, hash-cache pack performance, honest yield prove. Default engine `product`. Q-014 answered: overlay ≠ SKU.
 
 - **2026-08-16**: D-030 — named AGIS MUL factory OS graph (9→20) + adversarial validation. Graph growth thawed for that set only.
