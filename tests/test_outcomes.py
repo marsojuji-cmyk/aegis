@@ -7,6 +7,7 @@ from aegis.cli import main
 from aegis.outcomes import (
     finish_pilot,
     init_pilot,
+    load_outcome_evidence,
     outcome_report,
     cost_verification_report,
     pilot_status,
@@ -72,6 +73,26 @@ def test_record_outcome_rejects_duplicate_identity(tmp_path, monkeypatch):
     assert governed["variant"] == "governed"
 
 
+def test_load_outcomes_surfaces_malformed_and_ignored_rows(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    monkeypatch.setenv("AEGIS_HOME", str(home))
+    record_outcome(
+        task_id="valid", variant="baseline", accepted=True, elapsed_seconds=1,
+    )
+    path = home / "outcomes.jsonl"
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write("{broken\n")
+        handle.write(json.dumps({"kind": "not_an_outcome"}) + "\n")
+
+    evidence = load_outcome_evidence()
+    assert len(evidence["rows"]) == 1
+    assert evidence["malformed_rows"] == 1
+    assert evidence["ignored_rows"] == 1
+    report = outcome_report()
+    assert report["malformed_outcome_rows"] == 1
+    assert report["ignored_outcome_rows"] == 1
+
+
 def test_outcome_report_aggregates_cost_only_for_observed_pairs(tmp_path, monkeypatch):
     monkeypatch.setenv("AEGIS_HOME", str(tmp_path / "home"))
     for variant, cost in (("baseline", 1.5), ("governed", 1.0)):
@@ -84,6 +105,22 @@ def test_outcome_report_aggregates_cost_only_for_observed_pairs(tmp_path, monkey
     assert report["cost_comparison_complete"] is True
     assert report["cost_decision"] == "available: all matched pairs have observed provider-cost evidence"
     assert report["total_cost_usd_saved"] == 0.5
+
+
+def test_outcome_report_excludes_local_cost_sources_from_routing(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGIS_HOME", str(tmp_path / "home"))
+    for variant in ("baseline", "governed"):
+        record_outcome(
+            task_id="local", variant=variant, accepted=True, elapsed_seconds=1,
+            cost_usd=0, cost_status="verified_zero", cost_source="local_rehearsal",
+        )
+    report = outcome_report()
+    assert report["observed_cost_pairs"] == 0
+    assert report["cost_comparison_complete"] is False
+    assert report["routing_authorized"] is False
+    audit = cost_verification_report(limit=2)
+    assert audit["trustworthy_for_routing"] is False
+    assert all("not routing-grade" in gap["error"] for gap in audit["gaps"])
 
 
 def test_outcome_report_filters_workflow(tmp_path, monkeypatch):

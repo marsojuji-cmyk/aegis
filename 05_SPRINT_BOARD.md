@@ -29,7 +29,7 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 - status: `active`
 - goal: Unit1 D-030 remainder. Unit2 outcomes honesty. Unit3 classify leftover dirty. Then merge to main. No freeze thaw. No new surface.
 - T-1 [done]: Land D-030 remainder (frontmatter + factory OS validation test)
-- T-2 [todo]: Land outcomes honesty (untrusted cost_source)
+- T-2 [done]: Land outcomes honesty (untrusted cost_source)
 - T-3 [todo]: Classify leftover dirty files; keep or drop
 
 ### SP-011 — Q-011 require-review hard block

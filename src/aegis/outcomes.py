@@ -20,6 +20,16 @@ MINIMUM_MATCHED_TASKS = 10
 OBSERVED_COST_STATUSES = {"observed", "verified_zero"}
 ALL_COST_STATUSES = OBSERVED_COST_STATUSES | {"unknown", "legacy_unknown"}
 PILOT_WORKFLOW = "decision_grade_code_change"
+UNTRUSTED_ROUTING_COST_SOURCES = {"local_rehearsal", "local_cache", "mock", "estimated"}
+
+
+def _has_routing_cost_evidence(row: Dict[str, Any]) -> bool:
+    source = str(row.get("cost_source", "")).strip().lower()
+    return (
+        row.get("cost_status") in OBSERVED_COST_STATUSES
+        and bool(source)
+        and source not in UNTRUSTED_ROUTING_COST_SOURCES
+    )
 
 
 def _pilot_state_path(task_id: str) -> Path:
@@ -197,30 +207,42 @@ def record_outcome(
     return row
 
 
-def load_outcomes() -> Iterable[Dict[str, Any]]:
+def load_outcome_evidence() -> Dict[str, Any]:
+    """Load valid outcome rows while making corruption and ignored data visible."""
     path = outcomes_path()
     if not path.exists():
-        return []
+        return {"rows": [], "malformed_rows": 0, "ignored_rows": 0}
     rows = []
+    malformed = 0
+    ignored = 0
     for line in path.read_text(encoding="utf-8").splitlines():
         try:
             row = json.loads(line)
-            if row.get("variant") in REQUIRED_VARIANTS:
+            if isinstance(row, dict) and row.get("variant") in REQUIRED_VARIANTS:
                 rows.append(row)
+            else:
+                ignored += 1
         except json.JSONDecodeError:
-            continue
-    return rows
+            malformed += 1
+    return {"rows": rows, "malformed_rows": malformed, "ignored_rows": ignored}
+
+
+def load_outcomes() -> Iterable[Dict[str, Any]]:
+    return load_outcome_evidence()["rows"]
 
 
 def outcome_report(*, workflow: str = "production_code_change") -> Dict[str, Any]:
     """Read-only matched-task report; recommendation is withheld until evidence."""
-    rows = [row for row in load_outcomes() if row.get("workflow") == workflow]
+    evidence = load_outcome_evidence()
+    rows = [row for row in evidence["rows"] if row.get("workflow") == workflow]
     grouped: Dict[str, Dict[str, Dict[str, Any]]] = {}
     for row in rows:
         grouped.setdefault(row["task_id"], {})[row["variant"]] = row
     pairs = [pair for pair in grouped.values() if REQUIRED_VARIANTS <= set(pair)]
     if not pairs:
         return {"workflow": workflow, "paired_tasks": 0, "routing_authorized": False,
+                "malformed_outcome_rows": evidence["malformed_rows"],
+                "ignored_outcome_rows": evidence["ignored_rows"],
                 "minimum_matched_tasks": MINIMUM_MATCHED_TASKS,
                 "cost_decision": "withhold: no matched outcomes with provider-cost evidence",
                 "decision": "withhold: no matched baseline/governed outcomes"}
@@ -231,8 +253,7 @@ def outcome_report(*, workflow: str = "production_code_change") -> Dict[str, Any
     retry_delta = sum(b["retries"] - g["retries"] for b, g in zip(base, governed)) / len(pairs)
     observed_cost_pairs = [
         (b, g) for b, g in zip(base, governed)
-        if b.get("cost_status") in OBSERVED_COST_STATUSES
-        and g.get("cost_status") in OBSERVED_COST_STATUSES
+        if _has_routing_cost_evidence(b) and _has_routing_cost_evidence(g)
     ]
     cost_complete = len(observed_cost_pairs) == len(pairs)
     cost_delta = (
@@ -267,6 +288,8 @@ def outcome_report(*, workflow: str = "production_code_change") -> Dict[str, Any
     else:
         decision = "withhold: no quality-preserving time gain"
     return {"workflow": workflow, "paired_tasks": len(pairs), "minimum_matched_tasks": MINIMUM_MATCHED_TASKS,
+            "malformed_outcome_rows": evidence["malformed_rows"],
+            "ignored_outcome_rows": evidence["ignored_rows"],
             "acceptance_delta": round(acceptance_delta, 4),
             "mean_seconds_saved": round(time_delta, 2), "mean_retries_avoided": round(retry_delta, 2),
             "observed_cost_pairs": len(observed_cost_pairs),
@@ -302,6 +325,11 @@ def cost_verification_report(limit: int = 5) -> Dict[str, Any]:
                 gaps.append({"task_id": task_id, "error": "verified_zero requires cost_usd=0.0"})
             if not source:
                 gaps.append({"task_id": task_id, "error": "missing cost_source for observed status"})
+            elif source.lower() in UNTRUSTED_ROUTING_COST_SOURCES:
+                gaps.append({
+                    "task_id": task_id,
+                    "error": f"cost_source is not routing-grade provider evidence: {source}",
+                })
         else:
             if usd is not None:
                 gaps.append({"task_id": task_id, "error": "cost_usd present for unknown status"})
