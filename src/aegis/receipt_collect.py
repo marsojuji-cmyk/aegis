@@ -271,12 +271,13 @@ def collect_matched_pairs(
     execute: bool = False,
     pairs: int = DEFAULT_PAIRS,
     model: str = "",
+    governed_model: str = "",
     environ: Optional[Mapping[str, str]] = None,
     post_json: Optional[PostJson] = None,
 ) -> Dict[str, Any]:
     """Bill baseline+governed for N tasks. Does not authorize routing.
 
-    Same named model on both sides. Cost delta is observed, not staged.
+    Cost delta is observed, not staged. Optional governed_model may be cheaper.
     Uses workflow matched_provider_pairs so incomplete production pairs stay isolated.
     """
     status = probe(environ)
@@ -285,6 +286,7 @@ def collect_matched_pairs(
     status["workflow"] = PAIR_WORKFLOW
     if model.strip():
         status["model"] = model.strip()
+    status["governed_model"] = governed_model.strip() or status["model"]
     if not execute:
         status["mode"] = "probe"
         return status
@@ -302,7 +304,8 @@ def collect_matched_pairs(
         return status
     base = (os.environ.get("NOUS_BASE_URL") or os.environ.get("AGIS_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
     url = base + "/chat/completions"
-    model_id = status["model"]
+    baseline_id = status["model"]
+    governed_id = status["governed_model"]
     poster = post_json or (lambda u, h, b: _post_json(u, h, b))
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     written: List[Dict[str, Any]] = []
@@ -312,8 +315,8 @@ def collect_matched_pairs(
         "Authorization": f"Bearer {loaded['key']}",
     }
     for idx in range(pairs):
-        task_id = f"MP037-{stamp}-{idx:02d}"
-        for variant in ("baseline", "governed"):
+        task_id = f"MP039-{stamp}-{idx:02d}"
+        for variant, model_id in (("baseline", baseline_id), ("governed", governed_id)):
             try:
                 row = _bill_and_record(
                     poster, url, headers, model_id,

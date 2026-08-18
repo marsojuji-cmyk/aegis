@@ -655,7 +655,12 @@ def _cmd_outcome(args: argparse.Namespace) -> int:
         execute = bool(getattr(args, "execute", False))
         model = str(getattr(args, "model", "") or "")
         if pairs > 0:
-            payload = collect_matched_pairs(execute=execute, pairs=pairs, model=model)
+            payload = collect_matched_pairs(
+                execute=execute,
+                pairs=pairs,
+                model=model,
+                governed_model=str(getattr(args, "governed_model", "") or ""),
+            )
         else:
             payload = collect_receipts(
                 execute=execute,
@@ -2506,6 +2511,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="If >0 with --execute, bill this many baseline/governed pairs (not a routing trial)",
     )
     oc_collect.add_argument("--model", default="", help="Override AEGIS_RECEIPT_MODEL / deepseek-v4-pro")
+    oc_collect.add_argument(
+        "--governed-model",
+        default="",
+        help="Optional cheaper governed model id (same Nous/AGIS provider)",
+    )
     oc_collect.set_defaults(func=_cmd_outcome)
 
     pilot = sub.add_parser("pilot", help="Create and time reproducible matched workflow pairs")

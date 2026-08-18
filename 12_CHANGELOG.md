@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-08-18**: D-039 — cheaper governed `gpt-5.4-nano` vs `deepseek-v4-pro`. Pair report eligible. Product routing still off.
+
 - **2026-08-18**: D-038 — ten billed matched pairs (`matched_provider_pairs`). Cost complete. Δcost=0. Routing withheld.
 
 - **2026-08-18**: D-037 live — five consecutive `nous_api` receipts. Window ready. Routing still withheld (2/10 pairs).

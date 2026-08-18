@@ -114,3 +114,28 @@ def test_matched_pairs_do_not_authorize_without_cost_delta(tmp_path, monkeypatch
     assert report["cost_comparison_complete"] is True
     assert report["routing_authorized"] is False
     assert provider_window_status(limit=5)["provider_window_ready"] is True
+
+
+def test_cheaper_governed_can_pass_pair_math_without_cli_authorization(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGIS_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("NOUS_API_KEY", "sk-nous-test-rotated")
+
+    def fake_post(url, headers, body):
+        cost = 0.00004 if body["model"].endswith("pro") else 0.00001
+        return {
+            "id": "chatcmpl-delta",
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {"prompt_tokens": 8, "completion_tokens": 1, "cost": cost},
+        }
+
+    out = collect_matched_pairs(
+        execute=True, pairs=10, model="deepseek/deepseek-v4-pro",
+        governed_model="openai/gpt-5.4-nano", post_json=fake_post,
+    )
+    assert out["ok"] is True
+    assert out["routing_authorized"] is False
+    report = outcome_report(workflow=PAIR_WORKFLOW)
+    assert report["paired_tasks"] == 10
+    assert report["total_cost_usd_saved"] > 0
+    assert report["routing_authorized"] is True
+    assert report["decision"] == "eligible for routing trial"
