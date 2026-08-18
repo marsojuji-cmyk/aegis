@@ -25,6 +25,20 @@ NEW = (
     "MUL Index Provenance.md",
     "MUL Standing Binds.md",
 )
+FACTORY = (
+    "Aegis Sovereign AI Factory.md",
+    "Aegis Architecture Map.md",
+    "AegisGuard Control Plane.md",
+    "Aegis Tokenomics and Capacity.md",
+    "Aegis Metacognition and Escalation.md",
+    "Aegis Corporate Hierarchy.md",
+    "Aegis Product Factory.md",
+    "Aegis River Basin Governance Model.md",
+    "Aegis Evidence and Provenance Ledger.md",
+    "Aegis Threat Model.md",
+    "Aegis Implementation Roadmap.md",
+)
+CORPUS_COUNT = 20
 UNRESOLVED = "Hermes Embedding Index (test-unresolved)"
 
 
@@ -37,11 +51,14 @@ def mul_graph():
     set_active_graph(None)
 
 
-def test_living_corpus_still_nine(mul_graph):
-    assert len(mul_graph.notes_by_id) == 9
-    for name in REQUIRED + NEW:
+def test_living_corpus_named_set(mul_graph):
+    assert len(mul_graph.notes_by_id) == CORPUS_COUNT
+    for name in REQUIRED + NEW + FACTORY:
         assert name in mul_graph.notes_by_id
     assert any(link.target_title == UNRESOLVED for link in mul_graph.unresolved_links)
+    factory = mul_graph.notes_by_id["Aegis Sovereign AI Factory.md"]
+    assert factory.frontmatter.get("canonical") is False
+    assert factory.frontmatter.get("type") == "architecture"
 
 
 def test_exact_title_ranks_first(mul_graph):
@@ -52,7 +69,7 @@ def test_exact_title_ranks_first(mul_graph):
     assert out["hits"][0]["score"] >= 1000
     assert out["corpus"]["algorithm"] == "lexical/index/1.0"
     assert out["corpus"]["root"]
-    assert out["corpus"]["corpus_note_count"] == 9
+    assert out["corpus"]["corpus_note_count"] == CORPUS_COUNT
 
 
 def test_body_token_and_case_insensitive(mul_graph):
@@ -81,7 +98,10 @@ def test_limit_empty_query_and_unresolved(mul_graph):
     assert empty["error"]["code"] == "INVALID_ARGUMENT"
     hidden = invoke("hermes_notes_search", {"query": "Embedding", "include_unresolved": False})
     assert all(hit.get("id") for hit in hidden["hits"])
-    shown = invoke("hermes_notes_search", {"query": "Embedding Index", "include_unresolved": True})
+    shown = invoke(
+        "hermes_notes_search",
+        {"query": "Embedding Index", "include_unresolved": True, "limit": 25},
+    )
     assert any(hit["title"] == UNRESOLVED and hit["id"] is None for hit in shown["hits"])
 
 
@@ -92,8 +112,8 @@ def test_resolve_context_one_hop_and_unknown(mul_graph):
             "note_id": "Memory Utility Labs.md",
             "project": "aegis",
             "depth": 1,
-            "max_notes": 12,
-            "max_total_chars": 20000,
+            "max_notes": 24,
+            "max_total_chars": 120000,
         },
     )
     assert ctx["ok"] is True
@@ -101,9 +121,10 @@ def test_resolve_context_one_hop_and_unknown(mul_graph):
     assert "Memory Utility Labs.md" in ids
     assert "Hermes Note Graph.md" in ids
     assert "MUL Surface Map.md" in ids
+    assert "Aegis Architecture Map.md" in ids
     assert ctx["unresolved_count"] >= 1
     assert UNRESOLVED in ctx["context"]["unresolved_links"]
-    assert ctx["context"]["corpus_note_count"] == 9
+    assert ctx["context"]["corpus_note_count"] == CORPUS_COUNT
     missing = invoke("hermes_resolve_context", {"note_id": "no-such-note.md"})
     assert missing["error"]["code"] == "NOTE_NOT_FOUND"
 

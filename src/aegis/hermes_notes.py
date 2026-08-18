@@ -111,7 +111,7 @@ def parse_frontmatter(text: str) -> Dict[str, Any]:
         if not key:
             list_key = None
             continue
-        if key in {"tags", "projects"}:
+        if key in {"tags", "projects", "sources", "related"}:
             if value:
                 meta[key] = [part.strip() for part in value.strip("[]").split(",") if part.strip()]
                 list_key = None
@@ -120,7 +120,10 @@ def parse_frontmatter(text: str) -> Dict[str, Any]:
                 list_key = key
         else:
             list_key = None
-            meta[key] = value
+            if key == "canonical":
+                meta[key] = value.lower() in {"true", "yes", "1"}
+            else:
+                meta[key] = value
     return meta
 
 

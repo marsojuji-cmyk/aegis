@@ -116,6 +116,16 @@ def test_frontmatter_yaml_list_tags():
     assert meta["status"] == "active"
 
 
+def test_frontmatter_sources_related_and_canonical():
+    meta = parse_frontmatter(
+        "---\ntitle: X\nsources:\n  - docs/BASIN.md\nrelated:\n  - Aegis Architecture Map\ncanonical: true\nrisk: medium\n---\n"
+    )
+    assert meta["sources"] == ["docs/BASIN.md"]
+    assert meta["related"] == ["Aegis Architecture Map"]
+    assert meta["canonical"] is True
+    assert meta["risk"] == "medium"
+
+
 def test_frontmatter_preserves_unknown_keys_and_missing_is_ok():
     meta = parse_frontmatter("---\ntitle: X\nowner: hermes\n---\nbody\n")
     assert meta["title"] == "X"
