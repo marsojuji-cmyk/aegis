@@ -168,11 +168,17 @@ def provider_window_status(limit: int = 5) -> Dict[str, Any]:
     complete = [
         item for item in row_classes if item["classification"] == "routing_relevant_complete"
     ]
+    class_counts: Dict[str, int] = {}
+    for item in row_classes:
+        name = str(item["classification"])
+        class_counts[name] = class_counts.get(name, 0) + 1
     ready = len(recent) == limit and len(complete) == limit and limit > 0
     return {
         "limit": limit,
+        "row_count": len(recent),
         "audited_runs": len(recent),
         "complete_count": len(complete),
+        "class_counts": class_counts,
         "provider_window_ready": ready,
         "trustworthy_for_routing": audit["trustworthy_for_routing"],
         "routing_authorized": False,

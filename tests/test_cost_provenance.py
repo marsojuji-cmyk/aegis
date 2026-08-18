@@ -202,6 +202,37 @@ def test_d033_regression_untrusted_window_withholds(tmp_path, monkeypatch):
     assert "intentionally_excluded" in status["row_classes"]
 
 
+def _provider_row(task_id: str, source: str = "openai_api", usd: float = 0.05, status: str = "observed"):
+    record_outcome(
+        task_id=task_id, variant="baseline", accepted=True, elapsed_seconds=1,
+        cost_usd=usd, cost_status=status, cost_source=source,
+        workflow="decision_grade_code_change",
+    )
+
+
+def test_rehearsal_in_window_not_ready(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGIS_HOME", str(tmp_path / "home"))
+    for idx in range(4):
+        _provider_row(f"ok{idx}")
+    _provider_row("reh", source="local_rehearsal", usd=0.0, status="verified_zero")
+    status = provider_window_status(limit=5)
+    assert status["provider_window_ready"] is False
+    assert status["row_count"] == 5
+    assert status["class_counts"].get("intentionally_excluded") == 1
+    assert status["routing_authorized"] is False
+
+
+def test_cache_in_window_not_ready(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGIS_HOME", str(tmp_path / "home"))
+    for idx in range(4):
+        _provider_row(f"ok{idx}")
+    _provider_row("cache", source="local_cache", usd=0.0, status="verified_zero")
+    status = provider_window_status(limit=5)
+    assert status["provider_window_ready"] is False
+    assert status["class_counts"].get("intentionally_excluded") == 1
+    assert status["routing_authorized"] is False
+
+
 def test_rehearsal_or_cache_blocks_provider_window(tmp_path, monkeypatch):
     monkeypatch.setenv("AEGIS_HOME", str(tmp_path / "home"))
     record_outcome(
@@ -246,7 +277,9 @@ def test_clean_tmp_window_ready_does_not_authorize_routing(tmp_path, monkeypatch
         )
     status = provider_window_status(limit=5)
     assert status["audited_runs"] == 5
+    assert status["row_count"] == 5
     assert status["complete_count"] == 5
+    assert status["class_counts"].get("routing_relevant_complete") == 5
     assert status["provider_window_ready"] is True
     assert status["trustworthy_for_routing"] is True
     assert status["routing_authorized"] is False
