@@ -4,8 +4,8 @@ from setuptools import find_packages, setup
 
 setup(
     name="aegis",
-    version="1.1.1",
-    description="Aegis JIT token supply chain",
+    version="1.2.0",
+    description="Aegis agent OS — portable JIT token supply chain",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
     python_requires=">=3.9",

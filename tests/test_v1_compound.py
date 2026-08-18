@@ -6,8 +6,8 @@ from aegis.compound import compound_status, language_matrix
 from aegis.doctor import doctor_report
 
 
-def test_version_is_1_1():
-    assert __version__.startswith("1.1.")
+def test_version_is_1_2():
+    assert __version__.startswith("1.2.")
 
 
 def test_compound_matrix_has_core_langs():
@@ -32,11 +32,12 @@ def test_compound_status_pipeline():
     assert "cursor" in st["pipeline"]
 
 
-def test_doctor_epoch_1_1():
+def test_doctor_epoch_1_2():
     rep = doctor_report()
-    assert rep["epoch"] == "1.1"
-    assert str(rep.get("version", "")).startswith("1.1.")
+    assert rep["epoch"] == "1.2"
+    assert str(rep.get("version", "")).startswith("1.2.")
     assert rep["ok"] is True
+    assert rep.get("product_ready") is True
 
 
 def test_cli_version_and_langs():

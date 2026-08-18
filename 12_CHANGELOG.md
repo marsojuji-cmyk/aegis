@@ -1,5 +1,9 @@
 # Changelog
 
+- **2026-08-18**: D-031 — Master Aegis 1.2.0 product OS. Agent kernel, portable schema-2 home, frozen `/v1`, hash-cache pack performance, honest yield prove. Default engine `product`. Q-014 answered: overlay ≠ SKU.
+
+- **2026-08-16**: D-030 — named AGIS MUL factory OS graph (9→20) + adversarial validation. Graph growth thawed for that set only.
+
 - **2026-08-16**: D-029 — driver/car/track flow. Perplexity is research-only. Skill `aegis-flow` + Cursor rules. Fifth skill via `--install`.
 
 - **2026-08-16**: D-028 — operating authority. Cursor-only for Aegis. SP-018 closed: git `80f179e` matches claimed 1.1.1. Generated dumps gitignored.

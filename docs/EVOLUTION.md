@@ -78,4 +78,4 @@ pack/scrub/output → REDUCE
 - [x] **v1.1.1+** — Progressive burn (80/100/125), `/v1/aegis/burn`, events log, budget-aware workers, load-test
 - [x] **Budget-Aware Mode** — hysteresis SM, module ranking/shed, tick gates, multi-surface fan-out
 - [x] **Continuity Bridge** — emergency handoff report + embedding pack + Cross-AI next steps
-- [x] **Continuity Architect v1.1.0 frozen** — persona, activation ritual, embedding schema, hysteresis matrix
+- [x] **v1.2.0** — Master Aegis product OS: kernel, portable home, frozen `/v1`, yield harness

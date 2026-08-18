@@ -117,6 +117,39 @@ class AegisRouterHandler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if path in ("/v1/aegis/spec", "/spec"):
+            from aegis.api_contract import spec
+
+            self._write_json(200, spec())
+            return
+        if path in ("/v1/aegis/kernel", "/kernel"):
+            from aegis.kernel import syscall
+
+            env = syscall("status")
+            self._write_json(
+                200,
+                {
+                    "ok": bool(env.get("ok")),
+                    "kernel": env.get("result"),
+                    "kid": env.get("kid"),
+                    "elapsed_ms": env.get("elapsed_ms"),
+                    "version": __version__,
+                },
+            )
+            return
+        if path in ("/v1/aegis/yield", "/yield"):
+            from aegis.yield_proof import yield_report
+
+            report = yield_report()
+            self._write_json(
+                200,
+                {
+                    "ok": True,
+                    "yield": report,
+                    "version": __version__,
+                },
+            )
+            return
         if path in ("/v1/aegis/intel", "/intel", "/v1/aegis/intelligence"):
             from aegis.intelligence import intel_status
 

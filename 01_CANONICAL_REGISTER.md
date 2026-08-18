@@ -1,7 +1,7 @@
 # Canonical Register
 
 Index only. Detail lives in the specialized file named by each ID.
-Updated: 2026-08-15. Empty file filled from existing evidence (R-013).
+Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 
 ## Decisions (02_DECISION_LOG.md)
 
@@ -26,6 +26,8 @@ Updated: 2026-08-15. Empty file filled from existing evidence (R-013).
 | D-027 | active | Four Cursor skills installed via `aegis cursor --install`. |
 | D-028 | active | Aegis is shot-caller. Cursor-only for Aegis. One active sprint. Git ledger first. |
 | D-029 | active | Flow: driver / Cursor+Perplexity car / One track. Skill `aegis-flow`. |
+| D-030 | active | Named AGIS MUL factory OS graph (9→20). Graph growth thawed for that set only. |
+| D-031 | active | Master Aegis 1.2.0 product OS. Kernel + portable home + frozen /v1 + yield harness. Q-014: overlay ≠ SKU. |
 
 ## Risks (03_RISK_REGISTER.md)
 
@@ -48,6 +50,9 @@ Updated: 2026-08-15. Empty file filled from existing evidence (R-013).
 | Q-011 | open | When should require-review become a hard block? (blocked by D-011) |
 | Q-012 | parked | No configured native-tool-call model. Do not probe leftovers. |
 | Q-013 | locked-observe | Deterministic validator. Mapping observe-only. No D-025. |
+| Q-014 | answered | Factory OS overlay stays MUL graph. Product SKU is 1.2 kernel program (D-031). |
+| Q-015 | open | When to require the six-field consequential-action envelope on live tools? |
+| Q-016 | open | Corporate hierarchy: catalog only, or role runtime? Blocked on R-015. |
 
 ## Sprints (05_SPRINT_BOARD.md)
 
@@ -66,6 +71,8 @@ Updated: 2026-08-15. Empty file filled from existing evidence (R-013).
 | SP-017 | done | Four Cursor skills + `--install`. |
 | SP-018 | done | Align git ledger to claimed 1.1.1. No new surface. |
 | SP-019 | done | Driver/car/track flow + `aegis-flow` skill. |
+| SP-020 | done | Factory OS MUL graph + adversarial validation (D-030). |
+| SP-021 | done | Master Aegis 1.2.0 product OS (D-031). |
 
 ## Continuity
 

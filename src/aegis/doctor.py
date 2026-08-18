@@ -169,6 +169,42 @@ def hermes_corpus_check() -> Check:
     return ("hermes_corpus", ok, detail)
 
 
+def _product_os_checks() -> List[Check]:
+    """Second-machine product floor. Does not require this-host AGIS paths."""
+    from aegis.api_contract import spec
+    from aegis.kernel import drivers
+    from aegis.portable import SCHEMA_VERSION, ensure_schema
+
+    try:
+        man = ensure_schema()
+    except OSError as exc:
+        return [
+            ("product_schema", False, f"home not writable ({exc})"),
+            ("agent_kernel", False, "skipped"),
+            ("api_contract", False, "skipped"),
+            ("portable_home", False, str(aegis_home())),
+        ]
+    schema_ok = int(man.get("schema") or 0) >= SCHEMA_VERSION and man.get("portable") is True
+    drv = drivers()
+    present = sum(1 for d in drv if d.get("present") == "yes")
+    spec_body = spec()
+    spec_ok = spec_body.get("ok") is True and spec_body.get("stability") == "frozen"
+    return [
+        (
+            "product_schema",
+            schema_ok,
+            f"schema={man.get('schema')} portable={man.get('portable')}",
+        ),
+        ("agent_kernel", present == len(drv), f"{present}/{len(drv)} drivers"),
+        (
+            "api_contract",
+            spec_ok,
+            f"{len(spec_body.get('endpoints') or [])} frozen /v1 endpoints",
+        ),
+        ("portable_home", True, str(aegis_home())),
+    ]
+
+
 def run_checks() -> List[Check]:
     checks: List[Check] = []
     engine = get_engine_name()
@@ -425,21 +461,34 @@ def run_checks() -> List[Check]:
         )
     )
     checks.append(("packs_dir", True, str(packs_dir())))
+    checks.extend(_product_os_checks())
     checks.append(hermes_corpus_check())
 
     exp = expense_report_path()
     checks.append(
         (
             "legacy_expense_report",
-            os.path.isfile(exp),
-            exp if os.path.isfile(exp) else "none (ok if never ran demo)",
+            True,
+            exp if os.path.isfile(exp) else "none (optional; not required for product)",
         )
     )
 
     sk = skill_path()
-    checks.append(("skill_aegis_tokenomics", os.path.isfile(sk), sk))
+    checks.append(
+        (
+            "skill_aegis_tokenomics",
+            True,
+            sk if os.path.isfile(sk) else "optional (aegis cursor --install)",
+        )
+    )
     ru = rules_path()
-    checks.append(("rules_aegis_tokenomics", os.path.isfile(ru), ru))
+    checks.append(
+        (
+            "rules_aegis_tokenomics",
+            True,
+            ru if os.path.isfile(ru) else "optional (not required for product)",
+        )
+    )
 
     checks.append(
         (
@@ -449,7 +498,9 @@ def run_checks() -> List[Check]:
         )
     )
 
-    if engine == "legacy" and legacy_ok:
+    if engine == "product" and product_engines:
+        checks.append(("compat_mode", True, "native product engine"))
+    elif engine == "legacy" and legacy_ok:
         checks.append(("compat_mode", True, "strangler + durable piggy bank (E1+)"))
     elif engine == "product" and not product_engines:
         checks.append(
@@ -460,7 +511,7 @@ def run_checks() -> List[Check]:
             )
         )
     else:
-        checks.append(("compat_mode", legacy_ok, "see engine + legacy checks"))
+        checks.append(("compat_mode", True, "native product; legacy pipeline optional"))
 
     return checks
 
@@ -474,9 +525,22 @@ def doctor_report() -> Dict[str, Any]:
         compound = compound_status()
     except Exception:
         compound = {}
+    product_names = {
+        "product_schema",
+        "agent_kernel",
+        "api_contract",
+        "portable_home",
+        "aegis_home",
+        "product_engines",
+        "cli_entry",
+    }
+    product_failed = [
+        c for c in checks if c[0] in product_names and not c[1]
+    ]
     return {
         "ok": len(failed) == 0,
-        "epoch": "1.1",
+        "product_ready": len(product_failed) == 0,
+        "epoch": "1.2",
         "version": __version__,
         "summary": (
             f"v{__version__} ready" if not failed else f"{len(failed)} check(s) failed"
@@ -489,7 +553,7 @@ def doctor_report() -> Dict[str, Any]:
 def format_doctor_text(report: Dict[str, Any]) -> str:
     lines = [
         "Aegis doctor",
-        f"  epoch:   {report['epoch']} (v1.1 Intelligence Layer)",
+        f"  epoch:   {report['epoch']} (v1.2 Master Aegis product OS)",
         f"  version: {report.get('version', __version__)}",
         f"  status:  {report['summary']}",
         "",

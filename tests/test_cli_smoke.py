@@ -45,8 +45,8 @@ def test_doctor(aegis_tmp):
     from aegis.doctor import doctor_report
 
     r = doctor_report()
-    assert r["epoch"] == "1.1"
-    assert str(r.get("version", "")).startswith("1.1.")
+    assert r["epoch"] == "1.2"
+    assert str(r.get("version", "")).startswith("1.2.")
 
 
 def test_outcome_cli_records_unknown_cost(aegis_tmp):

@@ -1,16 +1,30 @@
-"""Resolve ~/.aegis (or $AEGIS_HOME) data plane paths."""
+"""Resolve ~/.aegis (or $AEGIS_HOME) data plane paths.
+
+Portable product home: $AEGIS_HOME wins. Else $AEGIS_USER namespaces
+~/.aegis/users/<id>. Else ~/.aegis. No host-absolute defaults.
+"""
 
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
+
+
+def sanitize_user(raw: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]", "", (raw or "").strip())
+    return cleaned[:64] or "default"
 
 
 def aegis_home() -> Path:
     raw = os.environ.get("AEGIS_HOME")
     if raw:
         return Path(raw).expanduser().resolve()
-    return Path.home() / ".aegis"
+    user = (os.environ.get("AEGIS_USER") or "").strip()
+    base = Path.home() / ".aegis"
+    if user:
+        return (base / "users" / sanitize_user(user)).resolve()
+    return base
 
 
 def ensure_home() -> Path:
@@ -18,6 +32,7 @@ def ensure_home() -> Path:
     home.mkdir(parents=True, exist_ok=True)
     (home / "packs").mkdir(exist_ok=True)
     (home / "outputs").mkdir(exist_ok=True)
+    (home / "kernel").mkdir(exist_ok=True)
     return home
 
 
@@ -137,3 +152,23 @@ def hermes_index_graph_path() -> Path:
 
 def hermes_index_projects_path() -> Path:
     return hermes_index_dir() / "projects.json"
+
+
+def manifest_path() -> Path:
+    return aegis_home() / "MANIFEST.json"
+
+
+def kernel_dir() -> Path:
+    return aegis_home() / "kernel"
+
+
+def kernel_procs_path() -> Path:
+    return kernel_dir() / "procs.jsonl"
+
+
+def kernel_stats_path() -> Path:
+    return kernel_dir() / "stats.json"
+
+
+def backups_dir() -> Path:
+    return aegis_home() / "backups"

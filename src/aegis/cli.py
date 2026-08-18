@@ -44,6 +44,10 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
         print(json.dumps(report, indent=2))
     else:
         print(format_doctor_text(report))
+        if getattr(args, "product", False):
+            print(f"  product_ready: {report.get('product_ready')}")
+    if getattr(args, "product", False):
+        return 0 if report.get("product_ready") else 1
     return 0 if report["ok"] else 1
 
 
@@ -1422,13 +1426,13 @@ def _cmd_version(args: argparse.Namespace) -> int:
     _prepare_read()
     st = {
         "version": __version__,
-        "epoch": "1.1",
+        "epoch": "1.2",
         "compound": compound_status(),
     }
     if args.json:
         print(json.dumps(st, indent=2))
     else:
-        print(f"aegis {__version__} (epoch 1.1)")
+        print(f"aegis {__version__} (epoch 1.2)")
         c = st["compound"]
         print(
             f"  compound engine: {c.get('structured_count')} structured · "
@@ -1863,24 +1867,27 @@ def _cmd_idea(args: argparse.Namespace) -> int:
 
 
 def _cmd_invest(args: argparse.Namespace) -> int:
-    from aegis.ideas import invest_in_idea
+    from aegis.kernel import syscall
 
     _ensure_seeded()
-    result = invest_in_idea(args.idea_id, credits=args.credits)
+    result = syscall("invest", idea_id=args.idea_id, credits=args.credits)
+    inner = result.get("result") if result.get("ok") else result
+    payload = inner if isinstance(inner, dict) else result
     if args.json:
         print(json.dumps(result, indent=2))
     else:
-        if result.get("ok"):
-            idea = result["idea"]
+        if result.get("ok") and payload.get("ok"):
+            idea = payload["idea"]
             print(
-                f"invested {result['invested']} credits → {idea['id']} "
+                f"invested {payload['invested']} credits → {idea['id']} "
                 f"[{idea['status']}] ROI {idea.get('roi_grade')} {idea['title']}"
             )
-            print(f"remaining wish jar: {result['available_credits']}")
+            print(f"remaining wish jar: {payload['available_credits']}")
         else:
-            print(f"invest failed: {result.get('error')}", file=sys.stderr)
+            err = payload.get("error") or result.get("error") or "invest failed"
+            print(f"invest failed: {err}", file=sys.stderr)
             return 1
-    return 0 if result.get("ok") else 1
+    return 0 if result.get("ok") and payload.get("ok") else 1
 
 
 def _cmd_sprint(args: argparse.Namespace) -> int:
@@ -2070,6 +2077,101 @@ def _cmd_audit(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_kernel(payload: Dict[str, Any], as_json: bool) -> int:
+    if as_json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0 if payload.get("ok", True) else 1
+    result = payload.get("result", payload)
+    if payload.get("kid"):
+        print(f"kid={payload.get('kid')} syscall={payload.get('syscall')} elapsed_ms={payload.get('elapsed_ms')}")
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 0 if payload.get("ok", True) else 1
+
+
+def _cmd_kernel(args: argparse.Namespace) -> int:
+    from aegis.kernel import syscall
+
+    _prepare_read()
+    action = getattr(args, "kernel_action", "status") or "status"
+    extra: Dict[str, Any] = {}
+    if getattr(args, "path", None):
+        extra["paths"] = list(args.path)
+    if getattr(args, "task", None):
+        extra["task"] = args.task
+    if getattr(args, "limit", None):
+        extra["limit"] = args.limit
+    if getattr(args, "dest", None):
+        extra["dest"] = args.dest
+    if getattr(args, "archive", None):
+        extra["archive"] = args.archive
+    if getattr(args, "home", None):
+        extra["home"] = args.home
+    if getattr(args, "rounds", None):
+        extra["rounds"] = args.rounds
+    if getattr(args, "idea_id", None):
+        extra["idea_id"] = args.idea_id
+    name = action if action != "syscall" else (args.name or "status")
+    payload = syscall(name, **extra)
+    return _print_kernel(payload, bool(args.json))
+
+
+def _cmd_os(args: argparse.Namespace) -> int:
+    from aegis.kernel import syscall
+
+    _prepare_read()
+    action = getattr(args, "os_action", "score") or "score"
+    extra: Dict[str, Any] = {}
+    if action == "init":
+        extra["home"] = getattr(args, "home", None)
+        payload = syscall("init", **extra)
+    elif action == "backup":
+        payload = syscall("backup", dest=getattr(args, "out", None) or getattr(args, "dest", None))
+    elif action == "restore":
+        payload = syscall("restore", archive=args.archive, home=getattr(args, "home", None))
+    elif action == "uninstall":
+        from aegis.portable import uninstall_home
+
+        payload = uninstall_home(yes=bool(getattr(args, "yes", False)), home=getattr(args, "home", None))
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(json.dumps(payload, indent=2))
+        return 0 if payload.get("ok") else 1
+    elif action == "bench":
+        payload = syscall("bench", paths=list(getattr(args, "path", None) or []), rounds=getattr(args, "rounds", 12))
+    else:
+        payload = syscall("score")
+    return _print_kernel(payload, bool(args.json))
+
+
+def _cmd_api(args: argparse.Namespace) -> int:
+    from aegis.api_contract import check_payload, spec
+    from aegis.kernel import syscall
+
+    _prepare_read()
+    action = getattr(args, "api_action", "spec") or "spec"
+    if action == "check":
+        payload = syscall("status")
+        result = check_payload("GET /v1/aegis/kernel", {"ok": True, "kernel": payload.get("result"), "version": payload.get("version")})
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("ok") else 1
+    body = spec()
+    print(json.dumps(body, indent=2))
+    return 0 if body.get("ok") else 1
+
+
+def _cmd_yield(args: argparse.Namespace) -> int:
+    from aegis.kernel import syscall
+
+    _prepare_read()
+    action = getattr(args, "yield_action", "report") or "report"
+    if action == "prove":
+        payload = syscall("yield_prove", paths=list(getattr(args, "path", None) or []), task=getattr(args, "task", None) or "yield-prove")
+    else:
+        payload = syscall("yield_prove")
+    return _print_kernel(payload, True)
+
+
 def _parse_mode(value: str) -> str:
     from aegis.pack_cache import MODE_ALIASES, normalize_mode
 
@@ -2133,6 +2235,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     d = sub.add_parser("doctor", help="Health and migration checks")
     d.add_argument("--json", action="store_true")
+    d.add_argument("--product", action="store_true", help="Exit on product_ready (second-machine floor)")
     d.set_defaults(func=_cmd_doctor)
 
     s = sub.add_parser("scrub", help="QC scrub a file or stdin (-) — reduce + ledger")
@@ -2747,6 +2850,77 @@ def build_parser() -> argparse.ArgumentParser:
     hm_resolve.add_argument("--project", default="")
     hm_resolve.add_argument("--max-notes", type=int, default=8)
     hm_resolve.set_defaults(func=_cmd_hermes)
+
+    kn = sub.add_parser("kernel", help="Agent kernel: process, memory, drivers, syscalls")
+    kn_sub = kn.add_subparsers(dest="kernel_action", required=True)
+    for name, help_text in (
+        ("status", "Kernel status"),
+        ("ps", "Process table"),
+        ("mem", "Memory RSS"),
+        ("drivers", "Driver table"),
+        ("score", "Product OS scorecard"),
+        ("budget", "Budget via syscall"),
+        ("api_spec", "Frozen API spec"),
+    ):
+        sp = kn_sub.add_parser(name, help=help_text)
+        sp.add_argument("--json", action="store_true")
+        if name == "ps":
+            sp.add_argument("--limit", type=int, default=20)
+        sp.set_defaults(func=_cmd_kernel)
+    kn_pack = kn_sub.add_parser("pack", help="Pack via kernel syscall")
+    kn_pack.add_argument("path", nargs="+")
+    kn_pack.add_argument("--task", default="kernel-pack")
+    kn_pack.add_argument("--json", action="store_true")
+    kn_pack.set_defaults(func=_cmd_kernel)
+    kn_sys = kn_sub.add_parser("syscall", help="Dispatch a named syscall")
+    kn_sys.add_argument("name")
+    kn_sys.add_argument("--json", action="store_true")
+    kn_sys.set_defaults(func=_cmd_kernel)
+
+    os_p = sub.add_parser("os", help="Master Aegis product OS (init/backup/score/bench)")
+    os_sub = os_p.add_subparsers(dest="os_action", required=True)
+    os_score = os_sub.add_parser("score", help="Layer scorecard")
+    os_score.add_argument("--json", action="store_true")
+    os_score.set_defaults(func=_cmd_os)
+    os_init = os_sub.add_parser("init", help="Create portable AEGIS_HOME")
+    os_init.add_argument("--home", default="")
+    os_init.add_argument("--json", action="store_true")
+    os_init.set_defaults(func=_cmd_os)
+    os_bak = os_sub.add_parser("backup", help="Tar.gz the data plane")
+    os_bak.add_argument("--out", dest="dest", default="")
+    os_bak.add_argument("--json", action="store_true")
+    os_bak.set_defaults(func=_cmd_os)
+    os_res = os_sub.add_parser("restore", help="Restore a backup archive")
+    os_res.add_argument("--from", dest="archive", required=True)
+    os_res.add_argument("--home", default="")
+    os_res.add_argument("--json", action="store_true")
+    os_res.set_defaults(func=_cmd_os)
+    os_un = os_sub.add_parser("uninstall", help="Delete data plane only")
+    os_un.add_argument("--yes", action="store_true")
+    os_un.add_argument("--home", default="")
+    os_un.add_argument("--json", action="store_true")
+    os_un.set_defaults(func=_cmd_os)
+    os_bench = os_sub.add_parser("bench", help="Hash-cache + pack performance")
+    os_bench.add_argument("path", nargs="+")
+    os_bench.add_argument("--rounds", type=int, default=12)
+    os_bench.add_argument("--json", action="store_true")
+    os_bench.set_defaults(func=_cmd_os)
+
+    api_p = sub.add_parser("api", help="Frozen /v1 contract")
+    api_sub = api_p.add_subparsers(dest="api_action", required=True)
+    api_spec = api_sub.add_parser("spec", help="Print frozen OpenAPI-floor spec")
+    api_spec.set_defaults(func=_cmd_api)
+    api_chk = api_sub.add_parser("check", help="Validate kernel payload against spec")
+    api_chk.set_defaults(func=_cmd_api)
+
+    yld = sub.add_parser("yield", help="Honest yield proof (no fake savings_percent)")
+    yld_sub = yld.add_subparsers(dest="yield_action", required=True)
+    yld_rep = yld_sub.add_parser("report", help="Ledger counterfactual + admission flag")
+    yld_rep.set_defaults(func=_cmd_yield)
+    yld_pr = yld_sub.add_parser("prove", help="Naive vs pack on given files")
+    yld_pr.add_argument("path", nargs="+")
+    yld_pr.add_argument("--task", default="yield-prove")
+    yld_pr.set_defaults(func=_cmd_yield)
 
     return p
 

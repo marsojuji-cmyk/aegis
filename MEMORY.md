@@ -1,12 +1,12 @@
 # Aegis Project Memory
 
 ## Architecture
-- Product: pack → budget → land → continuity → aegis-gate → honest ledger.
+- Product 1.2.0 is the agent OS: kernel (process/memory/drivers/syscalls) + portable schema-2 home + frozen `/v1` + yield harness on the 1.1.1 JIT token chain.
 - Grok Build = Cloud Pro specialist (`grokbuild_aegis_spec.md` packet). Not a co-IDE.
-- Hermes path: normalize → policy → redact → allow|deny|require-review → `~/.aegis/guard_log.jsonl`.
-- Token pairs: `hermes_telemetry.record_pair`. `savings_percent` null unless admitted.
+- Hermes: normalize → policy → redact → allow|deny|require-review → `~/.aegis/guard_log.jsonl`.
+- Pairs: `hermes_telemetry.record_pair`. `savings_percent` null unless admitted.
 - Sprints: `aegis sprint` → `~/.aegis/sprints.jsonl`. Board: `05_SPRINT_BOARD.md`.
-- Cursor: pack-first. `reuse=hit` → do not Read packed_paths. Capsule artifacts include pack id.
+- Cursor pack-first. `reuse=hit` → do not Read packed_paths. Capsules store pack id.
 
 ## Standing decisions
 - D-011: shadow on. No threshold tune. Q-011 closed.
@@ -19,16 +19,15 @@
 - D-025: Sprint CLI. D-026: capsule pack_id + Cursor pack-first + empty-pack refuse.
 - D-027: Four Cursor skills via `aegis cursor --install` → `~/.agents/skills`.
 - D-029: Flow. Driver / Cursor+Perplexity car / One track. Skill `aegis-flow`.
-- Last ID: D-029. Shot-caller: this agent on unfrozen work. Operator: Cursor only for Aegis code. Perplexity = research. Freeze list binds. No encoder.
-- Pin set: `hermes_notes_root` = AGIS MUL. Shadow on. `v1_ready=yes`. Git `80f179e` matches claimed 1.1.1. Scratch left untracked.
-
-## 2026-08-16
-- WP-3 / SP-013 unparked and shipped (D-026).
-- Reserve W33 throttle. No invest. Idea `idea_3fd3c23eef` closed with actual=0.
-- Operator loop accepted: reuse=hit, consumed unchanged, 8/41 (19.5%).
+- D-030: Named MUL factory OS graph 9→20. Unbounded growth still frozen.
+- D-031: 1.2.0 product OS. Overlay ≠ SKU. Default engine product. `doctor --product` is second-machine floor.
+- Last ID: D-031. Shot-caller: this agent on unfrozen work. Freeze list binds except named graph set. No encoder.
+- Pin set: `hermes_notes_root` = AGIS MUL. Shadow on. Auto commit+push on a verified one-intent unit; announce first. Mixed trees / stop-hook repair are not commit points.
 
 ## Rollback
 - Plugin: `hermes plugins disable aegis-gate`
 - D-026: revert `cursor_bridge.py` pack-first + `cli.py` continuity pack_id lookup
 - D-029: remove `aegis-flow` from `CURSOR_SKILL_NAMES` + Flow section in CURSORRULES
+- D-030: delete the 11 factory OS notes; revert MUL frontmatter; restore retrieval count 9
+- D-031: revert kernel/portable/api_contract/yield_proof + version 1.1.1 + FIRST_RELEASE boundary B
 - Cloud Pro overlay: revert packet in `grokbuild_aegis_spec.md` + router OPERATING / CORTEX-DOMAIN

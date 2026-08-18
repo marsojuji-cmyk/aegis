@@ -1,21 +1,23 @@
-# Aegis 1.1.1
+# Aegis 1.2.0
 
-**Sovereign JIT token supply chain** for AI coding agents.
+**Agent operating system** for AI coding work: kernel (process / memory / drivers / syscalls), portable data plane, frozen `/v1` API, honest yield proof.
 
-Reduce · reuse · recycle tokens. Pack context safely. Route models. Shrink & store finals. Ledger everything.
+Reduce · reuse · recycle tokens. Pack context. Gate tools. Land receipts. Ledger everything.
 
 Absolute Form: austere · aggressive on drift · protective reserve (≥80%).
 
-## Install
+## Install (any machine)
 
 ```bash
-cd ~/Projects/aegis
 python3 -m pip install --user -e .
-# optional AST harden for py/js/ts/tsx:
-python3 -m pip install --user -e ".[treesitter]"
-python3 -m aegis doctor
-python3 -m aegis version
+python3 -m aegis os init
+python3 -m aegis doctor --product
+python3 -m aegis os score
 ```
+
+Optional: `pip install --user -e ".[treesitter]"`. Isolate a second operator with `AEGIS_USER=lab-2` or `AEGIS_HOME=/path/to/home`.
+
+This-host extras (Cursor/Hermes/AGIS) remain optional. They are not required for `doctor --product`.
 
 ## Core loop
 
@@ -58,7 +60,11 @@ aegis land --body-file final.txt --summary "what shipped"
 aegis output-get out_<id>
 
 # Ops
-aegis budget | surplus | doctor | langs | version
+aegis os init|score|backup|restore|uninstall|bench
+aegis kernel status|ps|mem|drivers|pack
+aegis api spec|check
+aegis yield prove path.py | yield report
+aegis budget | surplus | doctor --product | langs | version
 aegis idea list | audit | invest
 aegis sprint seed | list | report | board
 aegis hermes search "query" | hermes resolve "note"
@@ -73,6 +79,9 @@ aegis hermes search "query" | hermes resolve "note"
 | `outputs/out_*.json` | Unified slim finals index |
 | `fund.json` / `ideas.jsonl` | Surplus → ROI backlog |
 | `sprints.jsonl` | Sprint ledger (`aegis sprint`) |
+| `MANIFEST.json` | Schema 2 portable home marker |
+| `kernel/` | Process table + syscall stats |
+| `backups/` | `aegis os backup` archives |
 | `config.toml` | Cap, reserve floor, reinvest rate |
 
 ## Compound engine (languages)
@@ -94,6 +103,6 @@ aegis hermes search "query" | hermes resolve "note"
 
 ## Version
 
-**1.1.1** — product version (`pyproject.toml` / `src/aegis/__init__.py`). Compound platform is 1.0.0 history.
+**1.2.0** — Master Aegis product OS (`pyproject.toml` / `src/aegis/__init__.py`). Hermes plugin identity stays 1.0.0. `savings_percent` remains null without an admitted pair.
 
 See [docs/EVOLUTION.md](docs/EVOLUTION.md) · [docs/ABSOLUTE.md](docs/ABSOLUTE.md) · [docs/FIELD.md](docs/FIELD.md)

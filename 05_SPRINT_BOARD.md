@@ -1,6 +1,6 @@
 # Sprint Board
 
-Product `1.1.1`. Operational SoT: `~/.aegis/sprints.jsonl`.
+Product `1.2.0`. Operational SoT: `~/.aegis/sprints.jsonl`.
 This file is the human index. Registers remain authoritative for D/R/Q.
 
 | ID | Status | Title | Blocked by | Links |
@@ -18,6 +18,8 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 | SP-017 | done | Four Cursor skills + install | — | — |
 | SP-018 | done | Align git ledger to claimed 1.1.1 | — | — |
 | SP-019 | done | Driver/car/track flow + aegis-flow skill | — | — |
+| SP-020 | done | Factory OS MUL graph + validation | — | D-030 |
+| SP-021 | done | Master Aegis 1.2.0 product OS | — | D-031 |
 
 ## Detail
 
@@ -118,3 +120,18 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 - goal: Perplexity is research-only. Track first. Fifth Cursor skill. No Perplexity client.
 - verified: Skill+CURSORRULES+install; Perplexity never edits.
 - evidence: tests/test_cursor_bridge.py + ~/.agents/skills/aegis-flow
+
+### SP-020 — Factory OS MUL graph + validation
+
+- status: `done`
+- goal: Named 20-note living corpus and adversarial validation without thawing parked controls.
+- verified: 11 factory notes + upgraded 9; unresolved embedding link remains; guard/admission tests preserved.
+- evidence: tests/test_hermes_retrieval.py, tests/test_factory_os_validation.py
+
+### SP-021 — Master Aegis 1.2.0 product OS
+
+- status: `done`
+- goal: Sellable local program: kernel, portable home, frozen /v1, honest yield, second-machine doctor.
+- verified: agent-OS layer scores 10 except yield (8 without admitted pair); `doctor --product` is the floor.
+- evidence: tests/test_master_os.py
+

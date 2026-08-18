@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+# (resolved path, mtime_ns, size) → sha256. Unchanged files skip a full read.
+_FILE_HASH_CACHE: Dict[Tuple[str, int, int], str] = {}
+_FILE_HASH_LAST: Dict[str, Tuple[int, int]] = {}
 
 from aegis.paths import ensure_home, packs_dir
 
@@ -39,11 +44,23 @@ def normalize_mode(mode: str) -> str:
 
 
 def file_hash(path: str) -> str:
+    resolved = str(Path(path).resolve())
+    st = os.stat(resolved)
+    key = (resolved, int(getattr(st, "st_mtime_ns", int(st.st_mtime * 1e9))), int(st.st_size))
+    cached = _FILE_HASH_CACHE.get(key)
+    if cached is not None:
+        return cached
+    prev = _FILE_HASH_LAST.get(resolved)
+    if prev is not None:
+        _FILE_HASH_CACHE.pop((resolved, prev[0], prev[1]), None)
     h = hashlib.sha256()
-    with open(path, "rb") as f:
+    with open(resolved, "rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
             h.update(chunk)
-    return h.hexdigest()
+    digest = h.hexdigest()
+    _FILE_HASH_CACHE[key] = digest
+    _FILE_HASH_LAST[resolved] = (key[1], key[2])
+    return digest
 
 
 def path_set_fingerprint(paths: List[str]) -> str:
