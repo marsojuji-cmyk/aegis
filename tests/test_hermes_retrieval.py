@@ -48,7 +48,13 @@ RESEARCH = (
     "Aegis RR-2026-08-002 Untrusted Cost Sources.md",
     "Aegis RR-2026-08-003 Utility Cannot Override Provenance.md",
 )
-CORPUS_COUNT = 28
+D034 = (
+    "Aegis RR-2026-08-004 Provenance Gap Classification.md",
+    "Aegis BS-006 Local Rehearsal and Cache Ambiguity.md",
+    "Aegis D-034 Decision Record.md",
+    "Aegis D-034 Live Validation Report.md",
+)
+CORPUS_COUNT = 32
 UNRESOLVED = "Hermes Embedding Index (test-unresolved)"
 
 
@@ -63,7 +69,7 @@ def mul_graph():
 
 def test_living_corpus_named_set(mul_graph):
     assert len(mul_graph.notes_by_id) == CORPUS_COUNT
-    for name in REQUIRED + NEW + FACTORY + RESEARCH:
+    for name in REQUIRED + NEW + FACTORY + RESEARCH + D034:
         assert name in mul_graph.notes_by_id
     assert any(link.target_title == UNRESOLVED for link in mul_graph.unresolved_links)
     factory = mul_graph.notes_by_id["Aegis Sovereign AI Factory.md"]

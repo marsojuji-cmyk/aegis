@@ -176,3 +176,11 @@ def test_live_mul_research_cluster_validates():
     for report in out["reports"]:
         assert report["rubric_pass_count"] >= 8
         assert report["excerpt"] is None or report["excerpt"]["trustworthy_for_routing"] is False
+    d034 = (
+        "Aegis RR-2026-08-004 Provenance Gap Classification.md",
+        "Aegis D-034 Live Validation Report.md",
+    )
+    for name in d034:
+        report = validate_note((MUL_ROOT / name).read_text(encoding="utf-8"), relpath=name)
+        assert report["ok"] is True, report["errors"]
+        assert report["rubric_pass_count"] >= 8

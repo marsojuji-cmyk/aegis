@@ -30,6 +30,7 @@ Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 | D-031 | active | Master Aegis 1.2.0 product OS. Kernel + portable home + frozen /v1 + yield harness. Q-014: overlay ≠ SKU. |
 | D-032 | active | Covering-pack reuse with hash verify. Freeze+honest yield on `doctor --product`. `aegis os ready`. |
 | D-033 | active | Named AGIS MUL research-log cluster (20→28). Cost-trust observe-only. No routing change. |
+| D-034 | active | Four D-033 gaps classified intentionally_excluded. Classifier only. Routing still withheld. |
 
 ## Risks (03_RISK_REGISTER.md)
 
