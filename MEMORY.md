@@ -2,6 +2,7 @@
 
 ## Architecture
 - Product: pack → budget → land → continuity → aegis-gate → honest ledger.
+- Grok Build = Cloud Pro specialist (`grokbuild_aegis_spec.md` packet). Not a co-IDE.
 - Hermes path: normalize → policy → redact → allow|deny|require-review → `~/.aegis/guard_log.jsonl`.
 - Token pairs: `hermes_telemetry.record_pair`. `savings_percent` null unless admitted.
 - Sprints: `aegis sprint` → `~/.aegis/sprints.jsonl`. Board: `05_SPRINT_BOARD.md`.
@@ -30,3 +31,4 @@
 - Plugin: `hermes plugins disable aegis-gate`
 - D-026: revert `cursor_bridge.py` pack-first + `cli.py` continuity pack_id lookup
 - D-029: remove `aegis-flow` from `CURSOR_SKILL_NAMES` + Flow section in CURSORRULES
+- Cloud Pro overlay: revert packet in `grokbuild_aegis_spec.md` + router OPERATING / CORTEX-DOMAIN
