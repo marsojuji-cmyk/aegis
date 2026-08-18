@@ -8,24 +8,26 @@
 ## Standing decisions
 - D-011: shadow on. Q-011 open. D-013/D-017: live `aegis-gate`.
 - D-015/D-016: no pair/`token_delta` until admission + named model.
-- D-018/D-021: daemon bind/health; bindError preserved; failed start reaps.
-- D-019: R-012 at gate only. R-014/Q-012 parked. D-020: memory is write. R-015 open.
-- D-022–D-026: index/graph/search/sprint/pack_id. D-027 skills. D-029 Flow.
-- D-030 MUL 9→20; D-033/D-034 named 20→32. Unbounded graph frozen. No MUL thaw for D-036.
+- D-018/D-021: daemon bind/health. D-019: R-012 at gate. D-020: memory is write.
+- D-022–D-029: index/graph/search/sprint/pack_id/skills/Flow.
+- D-030 MUL 9→20; D-033/034 20→32. Graph frozen. No MUL thaw D-036/037.
 - D-031: 1.2.0 OS. Overlay ≠ SKU. `doctor --product` second-machine floor.
 - D-032: covering reuse + hash verify. `os ready`. Freeze+honest yield on doctor.
 - D-036: five consecutive real receipts = window ready, not routing. Live window dirty.
+- D-037: `aegis outcome collect-receipts` (probe default; `--execute` needs env key + billed USD).
+- Named path: Nous/AGIS `deepseek-v4-pro`. Spend ok. Blocked: rotated env key. Chat key burned.
 - M-001..M-014: budget modules. Ghost enrichment removed. `opt_in` fail-closed.
 - Price: replacement-cost quote. Exclusive mid ~$107k. Hosted not a SKU.
-- Next 30d (W34 throttle 75.68%): Path A $45k if named buyer in 14d; else Path B reuse to 50%.
-- Last ID: D-036 / M-014. Freeze list binds except named graph set. No encoder.
+- Next 30d (W34 75.68%): Path A $45k if named buyer in 14d; else Path B reuse to 50%.
+- Last ID: D-037 / M-014. Freeze list binds except named graph set. No encoder.
 - Pin: `hermes_notes_root` = AGIS MUL. Shadow on. Auto commit+push on a verified unit.
 
 ## Rollback
 - Plugin: `hermes plugins disable aegis-gate`
 - D-026: revert pack-first + continuity pack_id. D-029: drop `aegis-flow`.
 - D-030: delete 11 factory OS notes; restore retrieval 9.
-- D-033: delete 8 notes; restore CORPUS_COUNT=20. D-034: delete 4 notes + classifier; CORPUS=28.
+- D-033: delete 8 notes; CORPUS=20. D-034: delete 4 notes + classifier; CORPUS=28.
 - D-035: revert verify-cost to `cost_verification_report` JSON only.
-- D-036: revert `provider_window_status` + `provider_window_ready`; withhold unchanged.
+- D-036: revert `provider_window_status` + `provider_window_ready`.
+- D-037: revert `receipt_collect.py` + collect-receipts CLI; withhold unchanged.
 - D-031: revert kernel/portable/api/yield + 1.1.1. D-032: revert covering-pack + freeze doctor.

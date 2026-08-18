@@ -649,6 +649,16 @@ def _cmd_outcome(args: argparse.Namespace) -> int:
         window["routing_authorized"] = False
         print(json.dumps(window, indent=2, default=str))
         return 0
+    if args.outcome_action == "collect-receipts":
+        from aegis.receipt_collect import collect_receipts
+        payload = collect_receipts(
+            execute=bool(getattr(args, "execute", False)),
+            count=int(getattr(args, "count", 5)),
+            model=str(getattr(args, "model", "") or ""),
+        )
+        payload["routing_authorized"] = False
+        print(json.dumps(payload, indent=2, default=str))
+        return 0 if payload.get("ok") else 1
     row = record_outcome(
         task_id=args.task_id, variant=args.variant, accepted=args.accepted,
         elapsed_seconds=args.elapsed_seconds, retries=args.retries,
@@ -2473,6 +2483,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     oc_verify.add_argument("--limit", type=int, default=5)
     oc_verify.set_defaults(func=_cmd_outcome)
+    oc_collect = oc_sub.add_parser(
+        "collect-receipts",
+        help="Probe or collect consecutive Nous/AGIS billed receipts (never authorizes routing)",
+    )
+    oc_collect.add_argument(
+        "--execute",
+        action="store_true",
+        help="Bill the named model and append observed rows. Default is probe-only.",
+    )
+    oc_collect.add_argument("--count", type=int, default=5)
+    oc_collect.add_argument("--model", default="", help="Override AEGIS_RECEIPT_MODEL / deepseek-v4-pro")
+    oc_collect.set_defaults(func=_cmd_outcome)
 
     pilot = sub.add_parser("pilot", help="Create and time reproducible matched workflow pairs")
     pilot_sub = pilot.add_subparsers(dest="pilot_action", required=True)

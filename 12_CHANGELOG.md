@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-08-18**: D-037 — `aegis outcome collect-receipts` (probe default; `--execute` only with env key + billed USD). Routing still withheld.
+
 - **2026-08-18**: D-036 — `provider_window_status` / `provider_window_ready` on verify-cost. Observe-only. Routing still withheld. No MUL thaw.
 
 - **2026-08-18**: D-035 — `aegis outcome verify-cost` labels gaps (`intentionally_excluded`). Does not authorize routing.
