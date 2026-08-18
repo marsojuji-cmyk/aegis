@@ -21,6 +21,7 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 | SP-020 | done | Factory OS MUL graph + validation | — | D-030 |
 | SP-021 | done | Master Aegis 1.2.0 product OS | — | D-031 |
 | SP-022 | done | Close 1.2.0 working tree in one-intent units | — | — |
+| SP-023 | done | Covering reuse + os ready | — | D-032 |
 
 ## Detail
 
@@ -142,6 +143,13 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 - goal: Unit1 D-030 remainder. Unit2 outcomes honesty. Unit3 classify leftover dirty. Then merge to main. No freeze thaw. No new surface.
 - verified: Unit1 D-030 evidence in git. Unit2 outcomes honesty. Unit3 classified leftover; M-* not scooped. Merge to main next.
 - evidence: 444e82e + 796e582
+
+### SP-023 — Covering reuse + os ready
+
+- status: `done`
+- goal: Make reuse the release lever without new modules or fake savings.
+- verified: subset pack hits; edit is a miss; freeze+yield on doctor --product; `aegis os ready`.
+- evidence: tests/test_reuse_and_surplus.py, tests/test_cursor_bridge.py, tests/test_master_os.py
 - T-1 [done]: Land D-030 remainder (frontmatter + factory OS validation test)
 - T-2 [done]: Land outcomes honesty (untrusted cost_source)
 - T-3 [done]: Classify leftover dirty files; keep or drop

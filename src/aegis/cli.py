@@ -179,7 +179,7 @@ def _cmd_pack(args: argparse.Namespace) -> int:
     from aegis.bento import assemble
     from aegis.compat.legacy import load_legacy_modules
     from aegis.ledger import record
-    from aegis.pack_cache import get_or_none, pack_key, save_pack
+    from aegis.pack_cache import attach_reuse_meta, get_or_none, pack_key, save_pack
     from aegis.quality import evaluate_pack
     from aegis.receipt import write_last_receipt
 
@@ -297,6 +297,7 @@ def _cmd_pack(args: argparse.Namespace) -> int:
     payload["quality"] = gate.as_dict()
 
     if not args.no_cache and not (args.strict and gate.strict_fail):
+        attach_reuse_meta(payload, args.paths, args.mode, targets)
         save_pack(pack_id, payload)
 
     entry = None
@@ -466,7 +467,7 @@ def _cmd_budget(args: argparse.Namespace) -> int:
         rate = float(report.get("reuse_hit_rate_percent") or 0)
         attempts = int(report.get("pack_attempts") or 0)
         if attempts >= 3 and rate < 20:
-            print("  cue:        low reuse — stabilize --task/--mode on repeated files")
+            print("  cue:        low reuse — pack the same files until they change; covering hits only on unchanged hashes")
     return 0
 
 
@@ -2139,6 +2140,25 @@ def _cmd_os(args: argparse.Namespace) -> int:
         return 0 if payload.get("ok") else 1
     elif action == "bench":
         payload = syscall("bench", paths=list(getattr(args, "path", None) or []), rounds=getattr(args, "rounds", 12))
+    elif action == "ready":
+        from aegis.doctor import release_report
+
+        payload = release_report()
+        if args.json:
+            print(json.dumps(payload, indent=2, ensure_ascii=False, default=str))
+        else:
+            print(
+                f"Aegis release  v{payload.get('version')}  ok={payload.get('ok')}  "
+                f"product_ready={payload.get('product_ready')}"
+            )
+            print(f"  decisions={payload.get('decisions_ok')}  modules={payload.get('modules_ok')}")
+            print(f"  reuse: {payload.get('reuse')}")
+            print("  savings_percent=null")
+            repair = payload.get("repair") or {}
+            for k, ids in repair.items():
+                if ids:
+                    print(f"  repair.{k}: {', '.join(ids)}")
+        return 0 if payload.get("ok") else 1
     else:
         payload = syscall("score")
     return _print_kernel(payload, bool(args.json))
@@ -2196,6 +2216,36 @@ def _cmd_decisions(args: argparse.Namespace) -> int:
             mark = "OK" if row.get("aligned") else "FIX"
             print(
                 f"  [{mark:3}] {row['id']:6} {row['verdict']:11} {row['evidence']}"
+            )
+            print(f"         → {row['action']}")
+    return 0 if report.get("ok") else 1
+
+
+def _cmd_modules(args: argparse.Namespace) -> int:
+    from aegis.modules import health, measure_naive_vs_pack
+
+    _prepare_read()
+    action = getattr(args, "modules_action", "health") or "health"
+    if action == "measure":
+        payload = measure_naive_vs_pack(
+            args.path,
+            model=args.model,
+            provider=args.provider,
+        )
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0 if payload.get("ok") else 1
+    report = health()
+    if args.json:
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+    else:
+        print(f"Aegis modules  v{report.get('version')}  ok={report.get('ok')}")
+        if report.get("repair"):
+            print(f"  repair: {', '.join(report['repair'])}")
+        for row in report.get("modules") or []:
+            mark = "OK" if row.get("aligned") else "FIX"
+            print(
+                f"  [{mark:3}] {row['id']:6} {row.get('name', ''):28} "
+                f"{row['verdict']:11} {row['evidence']}"
             )
             print(f"         → {row['action']}")
     return 0 if report.get("ok") else 1
@@ -2934,6 +2984,9 @@ def build_parser() -> argparse.ArgumentParser:
     os_bench.add_argument("--rounds", type=int, default=12)
     os_bench.add_argument("--json", action="store_true")
     os_bench.set_defaults(func=_cmd_os)
+    os_ready = os_sub.add_parser("ready", help="Release gate: product + freeze + D/M health")
+    os_ready.add_argument("--json", action="store_true")
+    os_ready.set_defaults(func=_cmd_os)
 
     api_p = sub.add_parser("api", help="Frozen /v1 contract")
     api_sub = api_p.add_subparsers(dest="api_action", required=True)
@@ -2961,6 +3014,17 @@ def build_parser() -> argparse.ArgumentParser:
     dec_m.add_argument("--model", default="xiaomi/mimo-v2.5-pro")
     dec_m.add_argument("--provider", default="nous")
     dec_m.set_defaults(func=_cmd_decisions)
+
+    mods = sub.add_parser("modules", help="Health of every budget-aware M- module")
+    mods_sub = mods.add_subparsers(dest="modules_action", required=True)
+    mods_h = mods_sub.add_parser("health", help="Probe M-001..M-014")
+    mods_h.add_argument("--json", action="store_true")
+    mods_h.set_defaults(func=_cmd_modules)
+    mods_m = mods_sub.add_parser("measure", help="Authorized Hermes naive vs pack usage")
+    mods_m.add_argument("path")
+    mods_m.add_argument("--model", default="xiaomi/mimo-v2.5-pro")
+    mods_m.add_argument("--provider", default="nous")
+    mods_m.set_defaults(func=_cmd_modules)
 
     return p
 

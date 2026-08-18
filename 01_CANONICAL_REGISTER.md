@@ -28,6 +28,7 @@ Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 | D-029 | active | Flow: driver / Cursor+Perplexity car / One track. Skill `aegis-flow`. |
 | D-030 | active | Named AGIS MUL factory OS graph (9→20). Graph growth thawed for that set only. |
 | D-031 | active | Master Aegis 1.2.0 product OS. Kernel + portable home + frozen /v1 + yield harness. Q-014: overlay ≠ SKU. |
+| D-032 | active | Covering-pack reuse with hash verify. Freeze+honest yield on `doctor --product`. `aegis os ready`. |
 
 ## Risks (03_RISK_REGISTER.md)
 
@@ -73,6 +74,28 @@ Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 | SP-019 | done | Driver/car/track flow + `aegis-flow` skill. |
 | SP-020 | done | Factory OS MUL graph + adversarial validation (D-030). |
 | SP-021 | done | Master Aegis 1.2.0 product OS (D-031). |
+| SP-023 | done | Release program: covering reuse + os ready (D-032). |
+
+## Modules (`aegis modules health`)
+
+Budget-aware catalog. No prior M- register existed; IDs are the live modules.
+
+| ID | Status | Name | Summary |
+|---|---|---|---|
+| M-001 | active | surplus_sync | Never-shed surplus sync. Does not auto-spend. |
+| M-002 | active | usage_intel | Week usage + waste signals. Not official thresholds. |
+| M-003 | active | forecast | Projected remaining / hard_stop freeze. |
+| M-004 | active | burn_status | Daily/safe ratio. Headroom-to-floor, not leftover cap. |
+| M-005 | active | weekly_report | Never-shed report from explicit tick/CLI. |
+| M-006 | parked | policy_nudges | Off unless `auto_apply_fixes`. |
+| M-007 | active | cache_optimize | Sheddable cache learn/prune. |
+| M-008 | parked | auto_invest | Frozen. `opt_in` fail-closed. |
+| M-009 | parked | auto_queue_ideas | Armed only if invest or apply-fixes is on. |
+| M-010 | active | seed_ideas | Idempotent three-title starter seed. |
+| M-011 | parked | memory_capture | Off unless `auto_memory`. R-015 open. |
+| M-012 | parked | cross_model_memory_inject | Router inject gated on `auto_memory`. |
+| M-013 | superseded | exploratory_enrichment | Removed from catalog; never had a runtime. |
+| M-014 | active | continuity_bridge | Auto-fires only on emergency band. |
 
 ## Continuity
 

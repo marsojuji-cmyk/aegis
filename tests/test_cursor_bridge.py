@@ -153,6 +153,9 @@ def test_cursor_pack_first_reuse_and_gate(aegis_tmp):
     assert gate["action"] == "reuse"
     assert gate["pack_id"] == first["pack_id"]
     assert main(["cursor", "--gate", str(a), "--mode", "implement"]) == 0
+    a.write_text("def a():\n    return 9\n")
+    stale = cursor_gate(str(a), mode="implement")
+    assert stale["action"] == "pack"
 
 
 def test_cursor_empty_pack_without_neighbors(aegis_tmp, tmp_path):

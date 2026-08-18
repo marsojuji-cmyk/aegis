@@ -33,6 +33,24 @@ def test_pack_reuse_hit(aegis_tmp, tmp_path):
     assert "reuse_hit" in kinds
 
 
+def test_covering_reuse_on_subset_then_stale_miss(aegis_tmp, tmp_path):
+    a = tmp_path / "a.py"
+    b = tmp_path / "b.py"
+    a.write_text("def a():\n    return 1\n")
+    b.write_text("def b():\n    return 2\n")
+    assert main(["pack", "--task", "both", "--mode", "explore", str(a), str(b)]) == 0
+    from aegis.ledger import read_all
+
+    before = len([r for r in read_all() if r["kind"] == "reuse_hit"])
+    assert main(["pack", "--task", "only a", "--mode", "explore", str(a)]) == 0
+    after = [r for r in read_all() if r["kind"] == "reuse_hit"]
+    assert len(after) == before + 1
+    a.write_text("def a():\n    return 99\n")
+    assert main(["pack", "--task", "changed a", "--mode", "explore", str(a)]) == 0
+    kinds = [r["kind"] for r in read_all()]
+    assert kinds.count("pack") >= 2
+
+
 def test_invest_blocked_when_hard_stop(aegis_tmp, monkeypatch):
     # force low remaining capacity via huge processed
     from aegis.config import AegisConfig, save_config

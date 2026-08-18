@@ -92,6 +92,11 @@ class AegisConfig:
 DEFAULTS = AegisConfig()
 
 
+def opt_in(cfg: Any, name: str) -> bool:
+    """Autonomy flags fail closed. Missing attribute means off."""
+    return bool(getattr(cfg, name, False))
+
+
 def _parse_simple_toml(text: str) -> Dict[str, Any]:
     """Minimal key = value parser (no tables). Values: int/float/str/bool."""
     out: Dict[str, Any] = {}

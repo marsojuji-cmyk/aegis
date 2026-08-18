@@ -19,14 +19,14 @@ This file is the product boundary. Later install, API, docs, and acceptance work
 ## Minimum successful workflow
 
 1. `aegis os init` (portable home + MANIFEST schema 2).
-2. Prepare or reuse a context pack (`aegis kernel pack` or `aegis pack`).
+2. Pack the **same files** until they change (`aegis pack` / `aegis cursor --gate`). Covering reuse hits only when hashes still match. After an edit, miss is correct — pack again.
 3. Apply budget and reserve policy (invest is a kernel syscall; frozen on throttle/hard_stop).
 4. Land output through the output store.
-5. Start or checkpoint continuity.
+5. Start or checkpoint continuity from the pack, not from chat history.
 6. Route Hermes actions through `aegis-gate` when Hermes is present.
 7. Search the canonical AGIS MUL corpus lexically when pinned.
 8. Emit a receipt naming mode, root, pack reuse, budget signal, and gate result.
-9. `aegis os score` and `aegis yield prove` — yield stays labeled `counterfactual_chars4`.
+9. `aegis os ready` then `aegis os score` and `aegis yield prove` — yield stays labeled `counterfactual_chars4`.
 
 ## In scope
 
@@ -95,7 +95,7 @@ Do not treat Documents Labs or the empty default root as Hermes product data.
 
 ## Release classification
 
-**Local program.** `aegis os init` + `aegis doctor --product` is the second-machine floor. Hermes/AGIS retrieval remains optional and this-host pin dependent.
+**Local program.** `aegis os init` + `aegis doctor --product` + `aegis os ready` is the second-machine floor. Hermes/AGIS retrieval remains optional and this-host pin dependent.
 
 Hosted SaaS, consumer marketplace, and host-kernel replacement are out of scope.
 

@@ -263,25 +263,18 @@ def expand_pack_paths(paths: Sequence[str]) -> Dict[str, Any]:
 
 
 def last_pack_covers(paths: Sequence[str], mode: str) -> Optional[Dict[str, Any]]:
-    """Reuse last Cursor pack when requested paths are a subset. No file read."""
-    from aegis.pack_cache import load_pack, normalize_mode
+    """Reuse a covering pack only when requested files are unchanged."""
+    from aegis.pack_cache import covering_pack
 
-    meta = load_last_cursor_meta()
-    pack_id = str(meta.get("pack_id") or "")
-    if not pack_id:
+    hit = covering_pack(mode, list(paths))
+    if not hit:
         return None
-    last_paths = {str(_resolve_path(p)) for p in (meta.get("paths") or []) if p}
-    want = {str(_resolve_path(p)) for p in paths if p}
-    if not want or not want.issubset(last_paths):
-        return None
-    last_mode = normalize_mode(str(meta.get("mode") or "explore"))
-    want_mode = normalize_mode(mode)
-    if want_mode == "implement" and last_mode != "implement":
-        return None
-    payload = load_pack(pack_id)
-    if not payload:
-        return None
-    return {"pack_id": pack_id, "payload": payload, "meta": meta}
+    pack_id, payload, meta = hit
+    return {
+        "pack_id": pack_id,
+        "payload": payload,
+        "meta": {"paths": list(payload.get("path_set") or meta.get("tried_keys") or []), "pack_id": pack_id, "mode": mode},
+    }
 
 
 def cursor_gate(path: str, *, mode: str = "implement") -> Dict[str, Any]:

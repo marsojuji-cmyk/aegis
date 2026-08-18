@@ -40,6 +40,7 @@ DECISION_IDS = (
     "D-029",
     "D-030",
     "D-031",
+    "D-032",
 )
 
 
@@ -353,6 +354,29 @@ def _probe_d031() -> Dict[str, Any]:
     )
 
 
+def _probe_d032() -> Dict[str, Any]:
+    from aegis.config import load_config, opt_in
+    from aegis.pack_cache import covering_pack
+    from aegis.yield_proof import yield_report
+
+    cfg = load_config()
+    armed = [
+        n
+        for n in ("auto_tick", "auto_invest", "auto_apply_fixes", "auto_memory")
+        if opt_in(cfg, n)
+    ]
+    yld = yield_report()
+    honest = yld.get("savings_percent") is None
+    aligned = callable(covering_pack) and not armed and honest
+    return _ok(
+        "D-032",
+        verdict="keep" if aligned else "repair",
+        aligned=aligned,
+        evidence=f"covering=yes armed={armed or 'none'} savings_percent={yld.get('savings_percent')}",
+        action="keep covering reuse + hash verify; do not thaw autonomy or claim savings_percent",
+    )
+
+
 PROBES = {
     "D-011": _probe_d011,
     "D-012": _probe_d012,
@@ -375,6 +399,7 @@ PROBES = {
     "D-029": _probe_d029,
     "D-030": _probe_d030,
     "D-031": _probe_d031,
+    "D-032": _probe_d032,
 }
 
 

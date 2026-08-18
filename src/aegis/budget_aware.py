@@ -79,7 +79,6 @@ DEFAULT_MODULES: List[ModuleSpec] = [
     ModuleSpec("seed_ideas", cost=0.6, signal_quality=0.4, freshness_need=0.1, consumer_priority=0.2, never_shed=False, tags=["ideas", "bootstrap"]),
     ModuleSpec("memory_capture", cost=0.7, signal_quality=0.6, freshness_need=0.5, consumer_priority=0.5, never_shed=False, tags=["memory"]),
     ModuleSpec("cross_model_memory_inject", cost=0.5, signal_quality=0.65, freshness_need=0.6, consumer_priority=0.55, never_shed=False, tags=["memory"]),
-    ModuleSpec("exploratory_enrichment", cost=2.0, signal_quality=0.35, freshness_need=0.2, consumer_priority=0.15, never_shed=False, tags=["enrichment", "optional"]),
     ModuleSpec(
         "continuity_bridge",
         cost=0.5,

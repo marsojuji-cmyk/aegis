@@ -42,7 +42,7 @@ def _naive_chars(paths: Sequence[str]) -> int:
 
 def prove(paths: Sequence[str], *, task: str = "yield-prove") -> Dict[str, Any]:
     from aegis.bento import assemble
-    from aegis.pack_cache import get_or_none, save_pack
+    from aegis.pack_cache import attach_reuse_meta, get_or_none, save_pack
 
     files = [str(Path(p).expanduser().resolve()) for p in paths if Path(p).is_file()]
     if not files:
@@ -61,6 +61,7 @@ def prove(paths: Sequence[str], *, task: str = "yield-prove") -> Dict[str, Any]:
     pack_id, cached, meta = get_or_none("explore", files, task)
     if cached is None:
         payload = assemble(core_task=task, code_snippets=snippets, mode="explore")
+        attach_reuse_meta(payload, files, "explore")
         save_pack(pack_id, payload)
         reuse = False
     else:

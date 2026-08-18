@@ -137,6 +137,18 @@ def test_cli_os_score_and_doctor_product(aegis_tmp):
     assert card["composite"] >= 9.0
 
 
+def test_product_floor_freeze_and_honest_yield(aegis_tmp):
+    from aegis.doctor import doctor_report
+    from aegis.portable import init_home
+
+    init_home()
+    report = doctor_report()
+    by = {c["name"]: c for c in report["checks"]}
+    assert by["freeze_autonomy"]["pass"] is True
+    assert by["yield_honest"]["pass"] is True
+    assert report["product_ready"] is True
+
+
 def test_daemon_spec_kernel_yield(aegis_tmp):
     import urllib.request
 

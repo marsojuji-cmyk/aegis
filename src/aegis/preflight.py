@@ -54,7 +54,7 @@ def _do_pack(
     """Run product pack path; return payload + gate + exit semantics."""
     from aegis.bento import assemble
     from aegis.ledger import record
-    from aegis.pack_cache import get_or_none, pack_key, save_pack
+    from aegis.pack_cache import attach_reuse_meta, get_or_none, pack_key, save_pack
     from aegis.quality import evaluate_pack
     from aegis.receipt import write_last_receipt
 
@@ -127,6 +127,7 @@ def _do_pack(
     gate = evaluate_pack(payload, mode=mode, targets=targets, sources=sources)
     payload["quality"] = gate.as_dict()
     if not dry_run and not reuse and not (strict and gate.strict_fail):
+        attach_reuse_meta(payload, path_list, mode, targets)
         save_pack(pack_id, payload)
 
     exit_code = 3 if (strict and gate.strict_fail) else 0

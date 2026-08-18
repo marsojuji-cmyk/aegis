@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from aegis.config import AegisConfig, load_config, save_config
+from aegis.config import AegisConfig, load_config, opt_in, save_config
 
 # Known fix handlers — stable ids match usage_intel.waste_signals
 KNOWN_FIXES = frozenset(
@@ -43,7 +43,7 @@ def apply_policy_nudges(
     Returns (cfg, applied_list). Skips fix ids in already_applied (weekly set).
     """
     cfg = cfg or load_config()
-    if not getattr(cfg, "auto_apply_fixes", True):
+    if not opt_in(cfg, "auto_apply_fixes"):
         return cfg, []
 
     seen = set(already_applied or ())
