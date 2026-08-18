@@ -5,7 +5,6 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 
 | ID | Status | Title | Blocked by | Links |
 |---|---|---|---|---|
-| SP-022 | active | Close 1.2.0 working tree in one-intent units | — | — |
 | SP-011 | blocked | Q-011 require-review hard block | D-011, Q-011 | D-011, Q-011 |
 | SP-014 | blocked | R-015 memory domain scope | R-015, D-020 | D-020, R-015 |
 | SP-010 | parked | R-014 admitted token pair | D-015, D-016, D-019, Q-012, R-014 | D-015, D-016, D-019, R-014, Q-012 |
@@ -21,16 +20,9 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 | SP-019 | done | Driver/car/track flow + aegis-flow skill | — | — |
 | SP-020 | done | Factory OS MUL graph + validation | — | D-030 |
 | SP-021 | done | Master Aegis 1.2.0 product OS | — | D-031 |
+| SP-022 | done | Close 1.2.0 working tree in one-intent units | — | — |
 
 ## Detail
-
-### SP-022 — Close 1.2.0 working tree in one-intent units
-
-- status: `active`
-- goal: Unit1 D-030 remainder. Unit2 outcomes honesty. Unit3 classify leftover dirty. Then merge to main. No freeze thaw. No new surface.
-- T-1 [done]: Land D-030 remainder (frontmatter + factory OS validation test)
-- T-2 [done]: Land outcomes honesty (untrusted cost_source)
-- T-3 [todo]: Classify leftover dirty files; keep or drop
 
 ### SP-011 — Q-011 require-review hard block
 
@@ -143,3 +135,13 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 - goal: Sellable local program: kernel, portable home, frozen /v1, honest yield, second-machine doctor.
 - verified: agent-OS layer scores 10 except yield (8 without admitted pair); doctor --product is the floor.
 - evidence: tests/test_master_os.py
+
+### SP-022 — Close 1.2.0 working tree in one-intent units
+
+- status: `done`
+- goal: Unit1 D-030 remainder. Unit2 outcomes honesty. Unit3 classify leftover dirty. Then merge to main. No freeze thaw. No new surface.
+- verified: Unit1 D-030 evidence in git. Unit2 outcomes honesty. Unit3 classified leftover; M-* not scooped. Merge to main next.
+- evidence: 444e82e + 796e582
+- T-1 [done]: Land D-030 remainder (frontmatter + factory OS validation test)
+- T-2 [done]: Land outcomes honesty (untrusted cost_source)
+- T-3 [done]: Classify leftover dirty files; keep or drop
