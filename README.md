@@ -38,6 +38,7 @@ aegis cursor --task "…" --mode implement path.py
 
 # Release gate
 aegis os ready
+aegis price quote
 aegis doctor --product
 aegis decisions health
 aegis modules health

@@ -2274,6 +2274,52 @@ def _cmd_modules(args: argparse.Namespace) -> int:
     return 0 if report.get("ok") else 1
 
 
+def _cmd_price(args: argparse.Namespace) -> int:
+    from aegis.pricing import format_quote, quote
+
+    _prepare_read()
+    payload = quote()
+    action = getattr(args, "price_action", "quote") or "quote"
+    if getattr(args, "json", False):
+        if action == "skus":
+            payload = {
+                "ok": True,
+                "savings_percent": None,
+                "skus": payload.get("skus"),
+                "value_delta": payload.get("value_delta"),
+            }
+        elif action == "pitch":
+            payload = {
+                "ok": True,
+                "savings_percent": None,
+                "buyer": payload.get("buyer"),
+                "sell": payload.get("sell"),
+                "market": payload.get("market"),
+            }
+        print(json.dumps(payload, indent=2, ensure_ascii=False, default=str))
+        return 0
+    if action == "skus":
+        sk = payload["skus"]
+        src = sk["source_nonexclusive"]["usd"]
+        ex = sk["exclusive_lab_12mo"]["usd"]
+        print("Aegis SKUs  (hosted=not offered)  savings_percent=null")
+        print(f"  source      ${src['low']:,}–${src['high']:,}  mid ${src['mid']:,}  {sk['source_nonexclusive']['includes']}")
+        print(f"  exclusive   ${ex['low']:,}–${ex['high']:,}  mid ${ex['mid']:,}  {sk['exclusive_lab_12mo']['includes']}")
+        return 0
+    if action == "pitch":
+        print(f"buyer: {payload['buyer']['yes']}")
+        print(f"not:   {payload['buyer']['no']}")
+        print("sell:")
+        for step in payload["sell"]:
+            print(f"  - {step}")
+        print("market:")
+        for step in payload["market"]:
+            print(f"  - {step}")
+        return 0
+    print(format_quote(payload))
+    return 0
+
+
 def _parse_mode(value: str) -> str:
     from aegis.pack_cache import MODE_ALIASES, normalize_mode
 
@@ -3074,6 +3120,18 @@ def build_parser() -> argparse.ArgumentParser:
     mods_m.add_argument("--model", default="xiaomi/mimo-v2.5-pro")
     mods_m.add_argument("--provider", default="nous")
     mods_m.set_defaults(func=_cmd_modules)
+
+    pr = sub.add_parser("price", help="Honest AGIS product quote (not token-bill valuation)")
+    pr_sub = pr.add_subparsers(dest="price_action", required=True)
+    pr_q = pr_sub.add_parser("quote", help="Then vs now bands + replacement cost")
+    pr_q.add_argument("--json", action="store_true")
+    pr_q.set_defaults(func=_cmd_price)
+    pr_s = pr_sub.add_parser("skus", help="Source vs exclusive vs hosted-refused")
+    pr_s.add_argument("--json", action="store_true")
+    pr_s.set_defaults(func=_cmd_price)
+    pr_p = pr_sub.add_parser("pitch", help="Who to sell, how to demo, what not to claim")
+    pr_p.add_argument("--json", action="store_true")
+    pr_p.set_defaults(func=_cmd_price)
 
     return p
 
