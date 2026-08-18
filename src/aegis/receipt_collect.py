@@ -123,10 +123,15 @@ def probe(environ: Optional[Mapping[str, str]] = None) -> Dict[str, Any]:
 def _post_json(
     url: str, headers: Mapping[str, str], body: Mapping[str, Any], timeout: float = 60.0
 ) -> Dict[str, Any]:
+    merged = {
+        "User-Agent": "curl/8.7.1",
+        "Accept": "application/json",
+        **dict(headers),
+    }
     req = urllib.request.Request(
         url,
         data=json.dumps(dict(body)).encode("utf-8"),
-        headers=dict(headers),
+        headers=merged,
         method="POST",
     )
     try:

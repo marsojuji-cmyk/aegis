@@ -13,9 +13,8 @@
 - D-030 MUL 9→20; D-033/034 20→32. Graph frozen. No MUL thaw D-036/037.
 - D-031: 1.2.0 OS. Overlay ≠ SKU. `doctor --product` second-machine floor.
 - D-032: covering reuse + hash verify. `os ready`. Freeze+honest yield on doctor.
-- D-036: five consecutive real receipts = window ready, not routing. Live window dirty.
-- D-037: `aegis outcome collect-receipts` (probe default; `--execute` needs env key + billed USD).
-- Named path: Nous/AGIS `deepseek-v4-pro`. Spend ok. Blocked: rotated env key. Chat key burned.
+- D-036: five consecutive real receipts = window ready, not routing. Live window READY (5× nous_api).
+- D-037: collect-receipts via Hermes Nous proxy. Live 2026-08-18T22:08:31Z wrote 5 observed rows. Routing still withheld.
 - M-001..M-014: budget modules. Ghost enrichment removed. `opt_in` fail-closed.
 - Price: replacement-cost quote. Exclusive mid ~$107k. Hosted not a SKU.
 - Next 30d (W34 75.68%): Path A $45k if named buyer in 14d; else Path B reuse to 50%.
