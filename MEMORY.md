@@ -17,7 +17,7 @@
 - M-001..M-014: budget modules. Ghost enrichment removed. `opt_in` fail-closed.
 - Price: replacement-cost quote. Exclusive mid ~$107k. Hosted not a SKU. `aegis price`.
 - Next 30d (W34 throttle 75.68%): Path A close source $45k if a named buyer in 14d; else Path B reuse-only to 50%. No new modules / hosted / pair-as-marketing.
-- Last ID: D-034 / M-014. Freeze list binds except named graph set. No encoder.
+- Last ID: D-035 / M-014. Freeze list binds except named graph set. No encoder.
 - Pin: `hermes_notes_root` = AGIS MUL. Shadow on. Auto commit+push on a verified one-intent unit; announce first.
 
 ## Rollback
@@ -26,5 +26,6 @@
 - D-030: delete 11 factory OS notes; restore retrieval 9.
 - D-033: delete 8 research-log notes; revert hub/Ledger wikilinks; restore CORPUS_COUNT=20.
 - D-034: delete 4 provenance notes + `cost_provenance.py`; restore CORPUS_COUNT=28; routing withhold unchanged.
+- D-035: revert verify-cost to `cost_verification_report` JSON only.
 - D-031: revert kernel/portable/api/yield + 1.1.1 + FIRST_RELEASE B.
 - D-032: revert covering-pack index + last_pack hash verify + freeze doctor checks.

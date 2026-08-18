@@ -644,8 +644,10 @@ def _cmd_outcome(args: argparse.Namespace) -> int:
         print(json.dumps(outcome_report(workflow=args.workflow), indent=2))
         return 0
     if args.outcome_action == "verify-cost":
-        from aegis.outcomes import cost_verification_report
-        print(json.dumps(cost_verification_report(limit=args.limit), indent=2))
+        from aegis.cost_provenance import classify_window
+        window = classify_window(limit=args.limit)
+        window["routing_authorized"] = False
+        print(json.dumps(window, indent=2, default=str))
         return 0
     row = record_outcome(
         task_id=args.task_id, variant=args.variant, accepted=args.accepted,
@@ -2465,7 +2467,10 @@ def build_parser() -> argparse.ArgumentParser:
     oc_report = oc_sub.add_parser("report", help="Read-only matched baseline/governed report")
     oc_report.add_argument("--workflow", default="production_code_change")
     oc_report.set_defaults(func=_cmd_outcome)
-    oc_verify = oc_sub.add_parser("verify-cost", help="Verify cost provenance for recent runs")
+    oc_verify = oc_sub.add_parser(
+        "verify-cost",
+        help="Audit recent cost provenance and classify gaps (never authorizes routing)",
+    )
     oc_verify.add_argument("--limit", type=int, default=5)
     oc_verify.set_defaults(func=_cmd_outcome)
 

@@ -1,8 +1,12 @@
 # Changelog
 
+- **2026-08-18**: D-035 — `aegis outcome verify-cost` labels gaps (`intentionally_excluded`). Does not authorize routing.
+
 - **2026-08-18**: D-034 — classify four live cost-trust gaps as intentionally_excluded (`local_rehearsal`, `local_cache`). Provenance classifier + tests. Named MUL 28→32. No outcomes.py/guard/wrapper edit. Routing remains withheld.
 
 - **2026-08-18**: D-033 — research-log pilot. Named AGIS MUL thaw 20→28. Deterministic note validator (`research_log.py` + pytest). Cost-trust records cite live `verify-cost`. No CLI. No routing-policy change. No Documents Labs writes.
+
+- **2026-08-18**: Honest product quote (`aegis price quote|skus|pitch`). Replacement-cost + completeness. Token $ is demo only. Hosted is not a SKU.
 
 - **2026-08-18**: D-032 — covering-pack reuse (subset hit, stale bytes miss). Freeze + honest yield on `doctor --product`. `aegis os ready`. No new intel modules. No `savings_percent`.
 

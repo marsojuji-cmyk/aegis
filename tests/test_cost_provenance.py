@@ -1,5 +1,7 @@
 """Provenance classification. Does not authorize routing."""
 
+import json
+
 import pytest
 
 from aegis.cost_provenance import (
@@ -192,3 +194,25 @@ def test_d033_regression_untrusted_window_withholds(tmp_path, monkeypatch):
     assert window["routing_authorized"] is False
     assert window["outcome_routing_authorized"] is False
     assert outcome_report()["routing_authorized"] is False
+
+
+def test_verify_cost_cli_labels_exclusions_and_never_authorizes(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("AEGIS_HOME", str(tmp_path / "home"))
+    from aegis.cli import main
+
+    record_outcome(
+        task_id="DG09", variant="governed", accepted=True, elapsed_seconds=1,
+        cost_usd=0.0, cost_status="verified_zero", cost_source="local_rehearsal",
+        workflow="decision_grade_code_change",
+    )
+    record_outcome(
+        task_id="ok", variant="baseline", accepted=True, elapsed_seconds=1,
+        cost_usd=0.05, cost_status="observed", cost_source="openai_api",
+        workflow="decision_grade_code_change",
+    )
+    assert main(["outcome", "verify-cost", "--limit", "2"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["routing_authorized"] is False
+    assert payload["trustworthy_for_routing"] is False
+    assert payload["excluded_count"] == 1
+    assert payload["classifications"][0]["classification"] == "intentionally_excluded"
