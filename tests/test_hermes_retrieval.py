@@ -38,7 +38,17 @@ FACTORY = (
     "Aegis Threat Model.md",
     "Aegis Implementation Roadmap.md",
 )
-CORPUS_COUNT = 20
+RESEARCH = (
+    "Aegis Research Log Protocol.md",
+    "Aegis Blind-Spot Register.md",
+    "Aegis Utility-Fix Proposal.md",
+    "Aegis Pilot Experiment Report.md",
+    "Aegis Research Log Decision Record.md",
+    "Aegis RR-2026-08-001 Cost Trust Window.md",
+    "Aegis RR-2026-08-002 Untrusted Cost Sources.md",
+    "Aegis RR-2026-08-003 Utility Cannot Override Provenance.md",
+)
+CORPUS_COUNT = 28
 UNRESOLVED = "Hermes Embedding Index (test-unresolved)"
 
 
@@ -53,7 +63,7 @@ def mul_graph():
 
 def test_living_corpus_named_set(mul_graph):
     assert len(mul_graph.notes_by_id) == CORPUS_COUNT
-    for name in REQUIRED + NEW + FACTORY:
+    for name in REQUIRED + NEW + FACTORY + RESEARCH:
         assert name in mul_graph.notes_by_id
     assert any(link.target_title == UNRESOLVED for link in mul_graph.unresolved_links)
     factory = mul_graph.notes_by_id["Aegis Sovereign AI Factory.md"]
@@ -112,7 +122,7 @@ def test_resolve_context_one_hop_and_unknown(mul_graph):
             "note_id": "Memory Utility Labs.md",
             "project": "aegis",
             "depth": 1,
-            "max_notes": 24,
+            "max_notes": 32,
             "max_total_chars": 120000,
         },
     )

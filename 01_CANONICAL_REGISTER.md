@@ -29,6 +29,7 @@ Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 | D-030 | active | Named AGIS MUL factory OS graph (9→20). Graph growth thawed for that set only. |
 | D-031 | active | Master Aegis 1.2.0 product OS. Kernel + portable home + frozen /v1 + yield harness. Q-014: overlay ≠ SKU. |
 | D-032 | active | Covering-pack reuse with hash verify. Freeze+honest yield on `doctor --product`. `aegis os ready`. |
+| D-033 | active | Named AGIS MUL research-log cluster (20→28). Cost-trust observe-only. No routing change. |
 
 ## Risks (03_RISK_REGISTER.md)
 

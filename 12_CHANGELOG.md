@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-08-18**: D-033 — research-log pilot. Named AGIS MUL thaw 20→28. Deterministic note validator (`research_log.py` + pytest). Cost-trust records cite live `verify-cost`. No CLI. No routing-policy change. No Documents Labs writes.
+
 - **2026-08-18**: D-032 — covering-pack reuse (subset hit, stale bytes miss). Freeze + honest yield on `doctor --product`. `aegis os ready`. No new intel modules. No `savings_percent`.
 
 - **2026-08-18**: Module health CLI (`aegis modules health|measure`). M-001..M-014 map the budget-aware catalog. Ghost `exploratory_enrichment` removed. Autonomy flags fail closed (`opt_in`). Docs no longer claim auto_* defaults true.

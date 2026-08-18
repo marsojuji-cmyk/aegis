@@ -53,7 +53,7 @@ This file is the product boundary. Later install, API, docs, and acceptance work
 1. Embeddings and semantic search
 2. Embedding-target resolution (unresolved wikilinks stay unresolved)
 3. Semantic packets and swarm runtime
-4. Unbounded MUL graph growth (D-030 named 20-note set only)
+4. Unbounded MUL graph growth (D-030 named 20-note factory-OS set; D-033 named 28-note set including the 8-note research-log cluster only)
 5. `memory.write` as Aegis memory
 6. Auto-invest
 7. Auto-tick
