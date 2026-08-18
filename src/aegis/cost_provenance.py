@@ -153,6 +153,33 @@ def classify_gaps(rows: Sequence[Mapping[str, Any]], gaps: Iterable[Mapping[str,
     return reports
 
 
+def provider_window_status(limit: int = 5) -> Dict[str, Any]:
+    """Last-N rows are ready only if every one is routing_relevant_complete.
+
+    Ready is a precondition, not authorization. routing_authorized is always false.
+    Does not write the ledger.
+    """
+    from aegis.outcomes import load_outcomes
+
+    audit = cost_verification_report(limit=limit)
+    all_rows = list(load_outcomes())
+    recent = all_rows[-limit:] if limit > 0 else all_rows
+    row_classes = [classify_record(row) for row in recent]
+    complete = [
+        item for item in row_classes if item["classification"] == "routing_relevant_complete"
+    ]
+    ready = len(recent) == limit and len(complete) == limit and limit > 0
+    return {
+        "limit": limit,
+        "audited_runs": len(recent),
+        "complete_count": len(complete),
+        "provider_window_ready": ready,
+        "trustworthy_for_routing": audit["trustworthy_for_routing"],
+        "routing_authorized": False,
+        "row_classes": [item["classification"] for item in row_classes],
+    }
+
+
 def classify_window(limit: int = 5) -> Dict[str, Any]:
     """Live-window classification. Never sets routing_authorized true."""
     audit = cost_verification_report(limit=limit)
@@ -163,10 +190,12 @@ def classify_window(limit: int = 5) -> Dict[str, Any]:
     gap_reports = classify_gaps(recent, audit.get("gaps") or [])
     report = outcome_report()
     authorized = bool(report.get("routing_authorized"))
+    window = provider_window_status(limit=limit)
     return {
         "audited_runs": audit["audited_runs"],
         "gaps_found": audit["gaps_found"],
         "trustworthy_for_routing": audit["trustworthy_for_routing"],
+        "provider_window_ready": window["provider_window_ready"],
         "routing_authorized": False,
         "outcome_routing_authorized": authorized,
         "decision": report.get("decision"),

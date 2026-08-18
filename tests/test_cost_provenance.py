@@ -9,6 +9,7 @@ from aegis.cost_provenance import (
     classify_record,
     classify_window,
     identity_present,
+    provider_window_status,
 )
 from aegis.outcomes import cost_verification_report, outcome_report, record_outcome
 
@@ -193,6 +194,68 @@ def test_d033_regression_untrusted_window_withholds(tmp_path, monkeypatch):
     assert window["unclassified_gap_count"] == 0
     assert window["routing_authorized"] is False
     assert window["outcome_routing_authorized"] is False
+    assert window["provider_window_ready"] is False
+    assert outcome_report()["routing_authorized"] is False
+    status = provider_window_status(limit=5)
+    assert status["provider_window_ready"] is False
+    assert status["routing_authorized"] is False
+    assert "intentionally_excluded" in status["row_classes"]
+
+
+def test_rehearsal_or_cache_blocks_provider_window(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGIS_HOME", str(tmp_path / "home"))
+    record_outcome(
+        task_id="p1", variant="baseline", accepted=True, elapsed_seconds=1,
+        cost_usd=0.05, cost_status="observed", cost_source="openai_api",
+        workflow="decision_grade_code_change",
+    )
+    record_outcome(
+        task_id="p2", variant="baseline", accepted=True, elapsed_seconds=1,
+        cost_usd=0.05, cost_status="observed", cost_source="openai_api",
+        workflow="decision_grade_code_change",
+    )
+    record_outcome(
+        task_id="p3", variant="baseline", accepted=True, elapsed_seconds=1,
+        cost_usd=0.05, cost_status="observed", cost_source="openai_api",
+        workflow="decision_grade_code_change",
+    )
+    record_outcome(
+        task_id="p4", variant="baseline", accepted=True, elapsed_seconds=1,
+        cost_usd=0.0, cost_status="verified_zero", cost_source="local_rehearsal",
+        workflow="decision_grade_code_change",
+    )
+    record_outcome(
+        task_id="p5", variant="baseline", accepted=True, elapsed_seconds=1,
+        cost_usd=0.0, cost_status="verified_zero", cost_source="local_cache",
+        workflow="decision_grade_code_change",
+    )
+    status = provider_window_status(limit=5)
+    assert status["provider_window_ready"] is False
+    assert status["trustworthy_for_routing"] is False
+    assert status["routing_authorized"] is False
+    assert classify_window(limit=5)["provider_window_ready"] is False
+
+
+def test_clean_tmp_window_ready_does_not_authorize_routing(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGIS_HOME", str(tmp_path / "home"))
+    for idx in range(5):
+        record_outcome(
+            task_id=f"R{idx}", variant="baseline", accepted=True, elapsed_seconds=1,
+            cost_usd=0.05, cost_status="observed", cost_source="openai_api",
+            workflow="decision_grade_code_change",
+        )
+    status = provider_window_status(limit=5)
+    assert status["audited_runs"] == 5
+    assert status["complete_count"] == 5
+    assert status["provider_window_ready"] is True
+    assert status["trustworthy_for_routing"] is True
+    assert status["routing_authorized"] is False
+    window = classify_window(limit=5)
+    assert window["provider_window_ready"] is True
+    assert window["routing_authorized"] is False
+    matched = outcome_report(workflow="decision_grade_code_change")
+    assert matched["paired_tasks"] < 10
+    assert matched["routing_authorized"] is False
     assert outcome_report()["routing_authorized"] is False
 
 
@@ -214,5 +277,6 @@ def test_verify_cost_cli_labels_exclusions_and_never_authorizes(tmp_path, monkey
     payload = json.loads(capsys.readouterr().out)
     assert payload["routing_authorized"] is False
     assert payload["trustworthy_for_routing"] is False
+    assert payload["provider_window_ready"] is False
     assert payload["excluded_count"] == 1
     assert payload["classifications"][0]["classification"] == "intentionally_excluded"

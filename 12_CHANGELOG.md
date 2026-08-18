@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-08-18**: D-036 — `provider_window_status` / `provider_window_ready` on verify-cost. Observe-only. Routing still withheld. No MUL thaw.
+
 - **2026-08-18**: D-035 — `aegis outcome verify-cost` labels gaps (`intentionally_excluded`). Does not authorize routing.
 
 - **2026-08-18**: D-034 — classify four live cost-trust gaps as intentionally_excluded (`local_rehearsal`, `local_cache`). Provenance classifier + tests. Named MUL 28→32. No outcomes.py/guard/wrapper edit. Routing remains withheld.
