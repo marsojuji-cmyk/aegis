@@ -12,6 +12,7 @@ from aegis.receipt_collect import (
     extract_billed_usd,
     load_api_key,
     probe,
+    resolve_billing_client,
 )
 
 
@@ -26,12 +27,26 @@ def test_extract_billed_usd_refuses_token_only_bodies():
 def test_probe_missing_key(monkeypatch):
     monkeypatch.delenv("NOUS_API_KEY", raising=False)
     monkeypatch.delenv("AGIS_API_KEY", raising=False)
+    monkeypatch.setattr("aegis.receipt_collect._proxy_ready", lambda *a, **k: False)
     out = probe({})
     assert out["ok"] is False
     assert out["ready_to_execute"] is False
     assert out["blocked"] == "missing_key"
     assert out["routing_authorized"] is False
     assert out["rows_written"] == 0
+
+
+def test_probe_uses_hermes_proxy_when_env_key_missing(monkeypatch):
+    monkeypatch.delenv("NOUS_API_KEY", raising=False)
+    monkeypatch.delenv("AGIS_API_KEY", raising=False)
+    monkeypatch.setattr("aegis.receipt_collect._proxy_ready", lambda *a, **k: True)
+    out = probe({})
+    assert out["ok"] is True
+    assert out["billing_via"] == "hermes_proxy"
+    assert out["env_name"] == "hermes_proxy"
+    client = resolve_billing_client({})
+    assert client["ok"] is True
+    assert client["via"] == "hermes_proxy"
 
 
 def test_probe_refuses_denylisted_key():
@@ -83,6 +98,7 @@ def test_execute_does_not_mint_when_bill_missing(tmp_path, monkeypatch):
 def test_collect_receipts_cli_probe_never_authorizes(monkeypatch, capsys):
     monkeypatch.delenv("NOUS_API_KEY", raising=False)
     monkeypatch.delenv("AGIS_API_KEY", raising=False)
+    monkeypatch.setattr("aegis.receipt_collect._proxy_ready", lambda *a, **k: False)
     from aegis.cli import main
 
     assert main(["outcome", "collect-receipts"]) == 1
@@ -117,11 +133,15 @@ def test_matched_pairs_do_not_authorize_without_cost_delta(tmp_path, monkeypatch
 
 
 def test_cheaper_governed_can_pass_pair_math_without_cli_authorization(tmp_path, monkeypatch):
+    import time
+
     monkeypatch.setenv("AEGIS_HOME", str(tmp_path / "home"))
     monkeypatch.setenv("NOUS_API_KEY", "sk-nous-test-rotated")
 
     def fake_post(url, headers, body):
         cost = 0.00004 if body["model"].endswith("pro") else 0.00001
+        if body["model"].endswith("pro"):
+            time.sleep(0.002)
         return {
             "id": "chatcmpl-delta",
             "choices": [{"message": {"content": "ok"}}],

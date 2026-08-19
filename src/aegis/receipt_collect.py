@@ -1,7 +1,8 @@
 """Collect consecutive billed provider receipts. Does not authorize routing.
 
-Reads API keys from process env only. Refuses chat-leaked denylisted keys.
-Does not estimate USD from tokens. Missing billed USD fails closed.
+Reads API keys from process env, or bills via local Hermes OAuth proxy when running.
+Refuses chat-leaked denylisted keys. Does not estimate USD from tokens.
+Missing billed USD fails closed.
 """
 
 from __future__ import annotations
@@ -26,6 +27,10 @@ COST_SOURCE = "nous_api"
 WORKFLOW = "provider_receipt_window"
 PAIR_WORKFLOW = "matched_provider_pairs"
 KEY_ENVS = ("NOUS_API_KEY", "AGIS_API_KEY")
+HERMES_PROXY_HOST = os.environ.get("AEGIS_HERMES_PROXY_HOST", "127.0.0.1")
+HERMES_PROXY_PORT = int(os.environ.get("AEGIS_HERMES_PROXY_PORT", "8645"))
+HERMES_PROXY_TOKEN = "aegis-local"
+HERMES_PROXY_BASE = f"http://{HERMES_PROXY_HOST}:{HERMES_PROXY_PORT}/v1"
 # SHA-256 of a Nous key pasted into chat 2026-08-18. Plaintext is not stored.
 BURNED_KEY_SHA256 = frozenset(
     {
@@ -104,15 +109,71 @@ def load_api_key(
     }
 
 
+def _proxy_ready(host: str = HERMES_PROXY_HOST, port: int = HERMES_PROXY_PORT, timeout: float = 1.5) -> bool:
+    """True when Hermes OAuth proxy accepts OpenAI-compatible requests."""
+    url = f"http://{host}:{port}/v1/models"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {HERMES_PROXY_TOKEN}",
+            "User-Agent": "curl/8.7.1",
+            "Accept": "application/json",
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return 200 <= resp.status < 300
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError):
+        return False
+
+
+def resolve_billing_client(
+    environ: Optional[Mapping[str, str]] = None,
+    *,
+    burned: Optional[frozenset] = None,
+) -> Dict[str, Any]:
+    """Env API key first; else Hermes proxy bearer (any token accepted locally)."""
+    loaded = load_api_key(environ, burned=burned)
+    env = environ if environ is not None else os.environ
+    base = (env.get("NOUS_BASE_URL") or env.get("AGIS_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
+    if loaded["ok"]:
+        return {
+            **loaded,
+            "base_url": base,
+            "via": "env_key",
+            "cost_source": COST_SOURCE,
+        }
+    proxy_base = (env.get("AEGIS_HERMES_PROXY_BASE") or HERMES_PROXY_BASE).rstrip("/")
+    host = env.get("AEGIS_HERMES_PROXY_HOST", HERMES_PROXY_HOST)
+    port = int(env.get("AEGIS_HERMES_PROXY_PORT", HERMES_PROXY_PORT))
+    if _proxy_ready(str(host), port):
+        return {
+            "ok": True,
+            "blocked": "",
+            "env_name": "hermes_proxy",
+            "key": HERMES_PROXY_TOKEN,
+            "reason": "",
+            "base_url": proxy_base,
+            "via": "hermes_proxy",
+            "cost_source": COST_SOURCE,
+        }
+    return {**loaded, "base_url": base, "via": "none", "cost_source": COST_SOURCE}
+
+
 def probe(environ: Optional[Mapping[str, str]] = None) -> Dict[str, Any]:
     """Ready check. Does not call the provider and does not write the ledger."""
-    loaded = load_api_key(environ)
+    loaded = resolve_billing_client(environ)
+    reason = loaded["reason"]
+    if loaded["via"] == "hermes_proxy":
+        reason = "billing via Hermes proxy (hermes proxy start --provider nous)"
     return {
         "ok": loaded["ok"],
         "ready_to_execute": loaded["ok"],
         "blocked": loaded["blocked"],
         "env_name": loaded["env_name"],
-        "reason": loaded["reason"],
+        "reason": reason,
+        "billing_via": loaded.get("via"),
         "provider": "nous",
         "model": os.environ.get("AEGIS_RECEIPT_MODEL", DEFAULT_MODEL),
         "count": DEFAULT_COUNT,
@@ -218,7 +279,7 @@ def collect_receipts(
     status["mode"] = "execute"
     if not status["ok"]:
         return status
-    loaded = load_api_key(environ)
+    loaded = resolve_billing_client(environ)
     if not loaded["ok"]:
         status.update({k: loaded[k] for k in ("ok", "blocked", "reason", "env_name")})
         return status
@@ -227,7 +288,7 @@ def collect_receipts(
         status["blocked"] = "invalid_count"
         status["reason"] = "count must be > 0"
         return status
-    base = (os.environ.get("NOUS_BASE_URL") or os.environ.get("AGIS_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
+    base = str(loaded["base_url"]).rstrip("/")
     url = base + "/chat/completions"
     model_id = status["model"]
     poster = post_json or (lambda u, h, b: _post_json(u, h, b))
@@ -238,6 +299,7 @@ def collect_receipts(
         "Content-Type": "application/json",
         "Authorization": f"Bearer {loaded['key']}",
     }
+    status["billing_via"] = loaded.get("via")
     for idx in range(count):
         try:
             row = _bill_and_record(
@@ -293,7 +355,7 @@ def collect_matched_pairs(
     status["mode"] = "execute_pairs"
     if not status["ok"]:
         return status
-    loaded = load_api_key(environ)
+    loaded = resolve_billing_client(environ)
     if not loaded["ok"]:
         status.update({k: loaded[k] for k in ("ok", "blocked", "reason", "env_name")})
         return status
@@ -302,7 +364,7 @@ def collect_matched_pairs(
         status["blocked"] = "invalid_count"
         status["reason"] = "pairs must be > 0"
         return status
-    base = (os.environ.get("NOUS_BASE_URL") or os.environ.get("AGIS_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
+    base = str(loaded["base_url"]).rstrip("/")
     url = base + "/chat/completions"
     baseline_id = status["model"]
     governed_id = status["governed_model"]
@@ -314,6 +376,7 @@ def collect_matched_pairs(
         "Content-Type": "application/json",
         "Authorization": f"Bearer {loaded['key']}",
     }
+    status["billing_via"] = loaded.get("via")
     for idx in range(pairs):
         task_id = f"MP039-{stamp}-{idx:02d}"
         for variant, model_id in (("baseline", baseline_id), ("governed", governed_id)):
