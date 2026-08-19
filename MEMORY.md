@@ -15,10 +15,10 @@
 - D-032: covering reuse + hash verify. `os ready`. Freeze+honest yield on doctor.
 - D-036: five consecutive real receipts = window ready, not routing. Live window READY.
 - D-038: 10 billed matched pairs, same model. Δcost=0. Routing withheld.
-- D-039: cheaper governed `openai/gpt-5.4-nano` vs baseline `deepseek-v4-pro`. Pair workflow eligible; product routing still off.
+- D-039: nano cheaper only on tiny chat. Implement pack: Pro $0.00005 vs nano $0.00085 (~17×). Routing off.
 - M-001..M-014: budget modules. Ghost enrichment removed. `opt_in` fail-closed.
-- Price: replacement-cost quote. Exclusive mid ~$107k. Hosted not a SKU.
-- Next 30d (W34 75.68%): Path A $45k if named buyer in 14d; else Path B reuse to 50%.
+- Price: source mid $45k. Exclusive ~$108k lockout — refuse if year-1 $300k (7× source). Hosted not a SKU.
+- AA + demo: frozen honesty beat. Pro implement baseline. Clock 2026-09-01; placeholder buyer is not a close.
 - Last ID: D-039 / M-014. Freeze list binds except named graph set. No encoder.
 - Pin: `hermes_notes_root` = AGIS MUL. Shadow on. Auto commit+push on a verified unit.
 

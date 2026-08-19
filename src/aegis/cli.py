@@ -2320,6 +2320,50 @@ def _cmd_price(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_demo(args: argparse.Namespace) -> int:
+    from aegis.demo import (
+        format_run,
+        format_status,
+        name_buyer,
+        run,
+        spoken_script,
+        start_clock,
+        status,
+    )
+
+    _prepare_read()
+    action = getattr(args, "demo_action", "status") or "status"
+    as_json = bool(getattr(args, "json", False))
+    if action == "start":
+        payload = start_clock(reset=bool(getattr(args, "reset", False)))
+        print(json.dumps(payload, indent=2, ensure_ascii=False) if as_json else format_status(payload))
+        return 0 if payload.get("ok") else 1
+    if action == "buyer":
+        payload = name_buyer(getattr(args, "name", "") or "")
+        print(json.dumps(payload, indent=2, ensure_ascii=False) if as_json else format_status(payload))
+        return 0 if payload.get("ok") else 2
+    if action == "script":
+        payload = spoken_script()
+        if as_json:
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            for beat in payload.get("beats") or []:
+                print(beat)
+        return 0
+    if action == "run":
+        paths = list(getattr(args, "path", None) or [])
+        skip = bool(getattr(args, "skip_pack", False))
+        if not skip and not paths:
+            print("aegis demo run: need a file path (or --skip-pack)", file=sys.stderr)
+            return 2
+        payload = run(paths, skip_pack=skip)
+        print(json.dumps(payload, indent=2, ensure_ascii=False, default=str) if as_json else format_run(payload))
+        return 0 if payload.get("ok") else 1
+    payload = status()
+    print(json.dumps(payload, indent=2, ensure_ascii=False) if as_json else format_status(payload))
+    return 0 if payload.get("ok") else 1
+
+
 def _parse_mode(value: str) -> str:
     from aegis.pack_cache import MODE_ALIASES, normalize_mode
 
@@ -3132,6 +3176,28 @@ def build_parser() -> argparse.ArgumentParser:
     pr_p = pr_sub.add_parser("pitch", help="Who to sell, how to demo, what not to claim")
     pr_p.add_argument("--json", action="store_true")
     pr_p.set_defaults(func=_cmd_price)
+
+    demo = sub.add_parser("demo", help="Path A four-beat rehearsal + 14-day buyer clock")
+    demo_sub = demo.add_subparsers(dest="demo_action", required=True)
+    demo_start = demo_sub.add_parser("start", help="Start 14-day operator-owner clock")
+    demo_start.add_argument("--reset", action="store_true")
+    demo_start.add_argument("--json", action="store_true")
+    demo_start.set_defaults(func=_cmd_demo)
+    demo_run = demo_sub.add_parser("run", help="Rehearse os ready → pack twice → quote → honesty")
+    demo_run.add_argument("path", nargs="*")
+    demo_run.add_argument("--skip-pack", action="store_true")
+    demo_run.add_argument("--json", action="store_true")
+    demo_run.set_defaults(func=_cmd_demo)
+    demo_buyer = demo_sub.add_parser("buyer", help="Record one named operator-owner (no outreach)")
+    demo_buyer.add_argument("name")
+    demo_buyer.add_argument("--json", action="store_true")
+    demo_buyer.set_defaults(func=_cmd_demo)
+    demo_st = demo_sub.add_parser("status", help="Days left and whether a buyer is named")
+    demo_st.add_argument("--json", action="store_true")
+    demo_st.set_defaults(func=_cmd_demo)
+    demo_sc = demo_sub.add_parser("script", help="Spoken four beats (no pack)")
+    demo_sc.add_argument("--json", action="store_true")
+    demo_sc.set_defaults(func=_cmd_demo)
 
     return p
 

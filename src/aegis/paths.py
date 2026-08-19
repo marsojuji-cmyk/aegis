@@ -172,3 +172,8 @@ def kernel_stats_path() -> Path:
 
 def backups_dir() -> Path:
     return aegis_home() / "backups"
+
+
+def close_clock_path() -> Path:
+    """14-day Path A operator-owner clock. Local JSON, not a CRM."""
+    return aegis_home() / "close_clock.json"

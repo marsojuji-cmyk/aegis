@@ -173,7 +173,7 @@ def quote() -> Dict[str, Any]:
         },
         "sell": [
             "Qualify: local agents, not SaaS.",
-            "Demo: aegis os init → pack the same files twice → aegis os ready → yield report (null).",
+            "Demo: aegis demo run <file> (os ready → pack twice → quote → AA honesty). Clock: aegis demo start.",
             "Show one naive-vs-pack estimated USD on their file. Do not quote savings_percent.",
             "Contract the freeze list as warranty (no auto-invest, no hosted, no fake yield).",
             "Close source vs exclusive. Walk if they want a marketplace.",

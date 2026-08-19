@@ -1,5 +1,9 @@
 # Changelog
 
+- **2026-08-19**: Path A demo landed + gate deny JSON string. `covering_hit=True` on live rehearsal. Guard log accounting + `scripts/analyze_request_telemetry.py`. 379 tests pass. Buyer name still operator-gated.
+
+- **2026-08-18**: Path A demo CLI (`aegis demo start|run|buyer|status|script`). 14-day buyer clock + four-beat rehearsal. Frozen AA snapshot. No scrape, no routing, no outreach.
+
 - **2026-08-18**: D-039 — cheaper governed `gpt-5.4-nano` vs `deepseek-v4-pro`. Pair report eligible. Product routing still off.
 
 - **2026-08-18**: D-038 — ten billed matched pairs (`matched_provider_pairs`). Cost complete. Δcost=0. Routing withheld.
