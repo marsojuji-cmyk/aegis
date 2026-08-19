@@ -21,3 +21,4 @@ apps/AegisMenu/.build/
 /dryrun-report.json
 /report-adversarial.json
 /labels.json
+.worktrees/

@@ -11,6 +11,7 @@ to block a tool; it returns a structured deny payload instead.
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -466,6 +467,21 @@ def hermes_tool_request(**kwargs: Any) -> Optional[Dict[str, Any]]:
     return None
 
 
+def gate_deny_payload(result: Mapping[str, Any]) -> str:
+    """JSON string for Hermes tool-role content (chat APIs require string, not dict)."""
+    return json.dumps(
+        {
+            "ok": False,
+            "blocked_by": "aegis",
+            "decision": result.get("decision"),
+            "reason": result.get("reason"),
+            "request_id": result.get("request_id"),
+            "trace_id": result.get("trace_id"),
+            "redaction_version": REDACTION_VERSION,
+        }
+    )
+
+
 def hermes_tool_execution(**kwargs: Any) -> Any:
     """tool_execution middleware. Must not raise — Hermes is fail-open."""
     wrapper = HermesWrapper()
@@ -489,15 +505,7 @@ def hermes_tool_execution(**kwargs: Any) -> Any:
     result = wrapper.handle(request, execute_fn=next_call if callable(next_call) else None)
     if result.get("executed"):
         return result.get("output")
-    return {
-        "ok": False,
-        "blocked_by": "aegis",
-        "decision": result.get("decision"),
-        "reason": result.get("reason"),
-        "request_id": result.get("request_id"),
-        "trace_id": result.get("trace_id"),
-        "redaction_version": REDACTION_VERSION,
-    }
+    return gate_deny_payload(result)
 
 
 def register(ctx: Any) -> None:

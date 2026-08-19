@@ -1,77 +1,109 @@
 import json
 from pathlib import Path
 from collections import defaultdict
-import datetime
 
 log_path = Path("~/.aegis/guard_log.jsonl").expanduser()
 if not log_path.exists():
     print("No log found.")
     exit(1)
 
+total_lines = 0
+valid_records = 0
+malformed_json = 0
+missing_required_fields = 0
+invalid_environment = 0
+unknown_run_id = 0
+duplicate_event_ids = 0
+valid_requests = 0
+flagged_requests = 0
+
+REQUIRED_FIELDS = {
+    "event_id", "request_id", "run_id", "environment", 
+    "provider", "rule", "action", "would_block", 
+    "shadow_mode", "timestamp_iso", "reason", "redaction_version"
+}
+
+VALID_ENVIRONMENTS = {"test", "development", "staging", "production"}
+
 records = []
+seen_events = set()
+
 with open(log_path, "r") as f:
     for line in f:
-        if line.strip():
-            records.append(json.loads(line))
+        line = line.strip()
+        if not line:
+            continue
+            
+        total_lines += 1
+        try:
+            r = json.loads(line)
+        except json.JSONDecodeError:
+            malformed_json += 1
+            continue
 
-real_records = []
-for r in records:
-    ts = r.get("timestamp_iso", "")
-    if ts.startswith("2026-08-11T19:59") or r["timestamp"] < 1786500000:
-        continue
-    real_records.append(r)
+        # Check required fields
+        if not REQUIRED_FIELDS.issubset(set(r.keys())):
+            missing_required_fields += 1
+            continue
 
-print(f"Total records in file: {len(records)}")
-print(f"Test burst records filtered: {len(records) - len(real_records)}")
-print(f"Real records to analyze: {len(real_records)}\n")
+        # Check dupes
+        event_id = r.get("event_id")
+        if event_id in seen_events:
+            duplicate_event_ids += 1
+            continue
+        seen_events.add(event_id)
 
-if not real_records:
-    print("No real records found!")
-    exit(0)
+        # Check Environment
+        env = r.get("environment")
+        if env not in VALID_ENVIRONMENTS:
+            invalid_environment += 1
+            continue
+            
+        # Check Run ID
+        run = r.get("run_id")
+        if not run or run == "unknown" or run == "default-run" or len(str(run)) < 8:
+            unknown_run_id += 1
+            continue
 
-# We want to group by unique calls.
-# A single tool call generates a budget, loop, mission, and optionally signal decision.
-# Since we don't have a correlation ID, we can group by timestamp (assuming they occur very close to each other).
-# Or we can just look at how many times budget was checked, which is 1 per call.
-calls = [r for r in real_records if r["rule"] == "budget"]
+        valid_records += 1
+        records.append(r)
 
-print(f"Estimated Unique Tool Calls: {len(calls)}")
+# Filter for legitimate usage denominator
+real_records = [r for r in records if r.get("environment") in ["development", "production", "staging"]]
 
-rules = defaultdict(int)
-actions = defaultdict(int)
-shadow_blocks = defaultdict(int)
-scores = []
-
+requests = defaultdict(list)
 for r in real_records:
-    rules[r["rule"]] += 1
-    actions[r["action"]] += 1
-    if r["action"] == "block" or (r["action"] == "allow" and "velocity" in r.get("reason", "").lower() and "exceeded" in r.get("reason", "").lower()):
-        # Note: shadow mode logs as "block" if it would have blocked.
-        shadow_blocks[r["rule"]] += 1
-        
-    if r["score"] is not None:
-        scores.append(r["score"])
+    requests[r.get("request_id")].append(r)
 
-print("\n--- RULE BREAKDOWN ---")
-for rule, count in rules.items():
-    print(f"- {rule}: {count} evaluations")
+valid_requests = len(requests)
+flagged_rules = defaultdict(int)
 
-print("\n--- ACTIONS ---")
-for action, count in actions.items():
-    print(f"- {action}: {count}")
+for req_id, events in requests.items():
+    blocks = [e for e in events if e.get("would_block") is True]
+    if blocks:
+        flagged_requests += 1
+        for b in blocks:
+            flagged_rules[b.get("rule")] += 1
 
-print("\n--- SHADOW BLOCKS (False Positives if flipped now) ---")
-for rule, count in shadow_blocks.items():
-    print(f"- {rule}: {count} would-be blocks")
+print(f"--- AEGIS LOG ACCOUNTING ---")
+print(f"total_lines: {total_lines}")
+print(f"valid_records: {valid_records}")
+print(f"malformed_json: {malformed_json}")
+print(f"missing_required_fields: {missing_required_fields}")
+print(f"invalid_environment: {invalid_environment}")
+print(f"unknown_run_id: {unknown_run_id}")
+print(f"duplicate_event_ids: {duplicate_event_ids}")
+print(f"\n--- REQUEST TELEMETRY ---")
+print(f"valid_requests: {valid_requests}")
+print(f"flagged_requests: {flagged_requests}")
 
-if len(calls) > 0 and sum(shadow_blocks.values()) > 0:
-    fp_rate = sum(shadow_blocks.values()) / len(calls) * 100
-    print(f"\nEstimated False Positive Rate: {fp_rate:.2f}%")
+if valid_requests > 0:
+    block_rate = (flagged_requests / valid_requests) * 100
+    print(f"legitimate_would_block_request_rate: {block_rate:.2f}%")
 else:
-    print("\nEstimated False Positive Rate: 0.00%")
+    print("legitimate_would_block_request_rate: N/A (no legitimate requests)")
 
-if scores:
-    print(f"\nAverage Signal Score: {sum(scores)/len(scores):.2f}")
-    print(f"Min Signal Score: {min(scores):.2f}")
-    print(f"Max Signal Score: {max(scores):.2f}")
-
+if flagged_requests > 0:
+    print("\n--- FLAGGED RULES ---")
+    for rule, count in flagged_rules.items():
+        print(f"- {rule}: {count} rule hits")
