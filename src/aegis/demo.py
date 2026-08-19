@@ -148,7 +148,11 @@ def status() -> Dict[str, Any]:
         "overdue": overdue,
         "savings_percent": None,
         "routing_authorized": False,
-        "cue": "Name one operator-owner, then aegis demo buyer \"Name\". Cron: 0 9 * * * python3 -m aegis demo status",
+        "cue": (
+            f"Cron: 0 9 * * * python3 -m aegis demo status"
+            if buyer
+            else 'Name one operator-owner, then aegis demo buyer "Name". Cron: 0 9 * * * python3 -m aegis demo status'
+        ),
     }
 
 

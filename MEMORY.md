@@ -18,7 +18,7 @@
 - D-039: nano cheaper only on tiny chat. Implement pack: Pro $0.00005 vs nano $0.00085 (~17×). Routing off.
 - M-001..M-014: budget modules. Ghost enrichment removed. `opt_in` fail-closed.
 - Price: source mid $45k. Exclusive ~$108k lockout — refuse if year-1 $300k (7× source). Hosted not a SKU.
-- AA + demo: frozen honesty beat. Pro implement baseline. Clock 2026-09-01; placeholder buyer is not a close.
+- AA + demo: frozen honesty beat. Pro implement baseline. Clock 2026-09-01; buyer **MARCUS RICHARDS** (MUL founder, AEGIS creator).
 - Last ID: D-039 / M-014. Freeze list binds except named graph set. No encoder.
 - Pin: `hermes_notes_root` = AGIS MUL. Shadow on. Auto commit+push on a verified unit.
 
