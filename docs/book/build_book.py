@@ -252,7 +252,7 @@ def page_half_title(rng: random.Random) -> Image.Image:
 
 def page_title(rng: random.Random) -> Image.Image:
     im = canvas(rng)
-    tx, tw = paste_complement(im, D2 / "d2-intro.png", verso=False, crop=True)
+    tx, tw = paste_complement(im, D2 / "d2-title-panel.png", verso=False, crop=True)
     d = ImageDraw.Draw(im)
     d.text((tx, 90), "a Memory Utility Publication", font=F_LIGHT(16), fill=TEAL)
     d.text((tx, 140), "Introducing", font=F_REG(26), fill=CREAM)
