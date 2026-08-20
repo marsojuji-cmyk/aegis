@@ -167,15 +167,26 @@ def chapter_head(d: ImageDraw.ImageDraw, numeral: str, title: str, y: int = 78, 
     return y + 90
 
 
-def paste_complement(im: Image.Image, path: Path, verso: bool, crop: bool = False) -> tuple[int, int]:
-    """Plate on the outer edge. crop=False letterboxes so labels never clip."""
+def paste_complement(
+    im: Image.Image,
+    path: Path,
+    verso: bool,
+    crop: bool = False,
+    inset: float = 0.0,
+) -> tuple[int, int]:
+    """Plate on the outer edge. crop=False letterboxes so the subject is not clipped."""
     src = Image.open(path).convert("RGB")
     pw = int(round(H * 3 / 4))
+    panel = Image.new("RGB", (pw, H), CHARCOAL)
+    box = (
+        max(1, int(pw * (1 - 2 * inset))),
+        max(1, int(H * (1 - 2 * inset))),
+    )
     if crop:
-        panel = ImageOps.fit(src, (pw, H), Image.Resampling.LANCZOS)
+        fitted = ImageOps.fit(src, box, Image.Resampling.LANCZOS)
+        panel.paste(fitted, ((pw - box[0]) // 2, (H - box[1]) // 2))
     else:
-        panel = Image.new("RGB", (pw, H), CHARCOAL)
-        contained = ImageOps.contain(src, (pw, H), Image.Resampling.LANCZOS)
+        contained = ImageOps.contain(src, box, Image.Resampling.LANCZOS)
         panel.paste(contained, ((pw - contained.width) // 2, (H - contained.height) // 2))
     im.paste(panel, (0 if verso else W - pw, 0))
     if verso:
@@ -252,7 +263,7 @@ def page_half_title(rng: random.Random) -> Image.Image:
 
 def page_title(rng: random.Random) -> Image.Image:
     im = canvas(rng)
-    tx, tw = paste_complement(im, D2 / "d2-title-panel.png", verso=False, crop=True)
+    tx, tw = paste_complement(im, D2 / "d2-title-panel.png", verso=False, crop=False, inset=0.07)
     d = ImageDraw.Draw(im)
     d.text((tx, 90), "a Memory Utility Publication", font=F_LIGHT(16), fill=TEAL)
     d.text((tx, 140), "Introducing", font=F_REG(26), fill=CREAM)
