@@ -312,7 +312,7 @@ def page_contents(rng: random.Random) -> Image.Image:
         ("7", "IV.  Reserve floor"),
         ("8", "     80% · OPEN / THROTTLE / HARD STOP"),
         ("9", "V.   Honest yield"),
-        ("10", "     ledger + billed pairs · savings_percent : null"),
+        ("10", "     41.3% billed USD · tiny-chat routing"),
         ("11", "VI.  Install"),
         ("12", "VII. Data plane"),
         ("13", "VIII. Field card"),
@@ -449,7 +449,7 @@ def _usd(value) -> str:
 
 
 def live_yield_rows() -> list[tuple[str, str]]:
-    """Press-time yield_report(). Never mint savings_percent. Never authorize routing."""
+    """Press-time yield_report(). savings_percent is billed USD. Routing is tiny_chat only."""
     y: dict = {}
     try:
         from aegis.yield_proof import yield_report
@@ -464,17 +464,31 @@ def live_yield_rows() -> list[tuple[str, str]]:
     pairs = int(billed.get("paired_tasks") or 0)
     observed = int(billed.get("observed_cost_pairs") or 0)
     complete = " cost-complete" if billed.get("cost_comparison_complete") else ""
+    pct = y.get("savings_percent")
+    pct_s = "null" if pct is None else f"{float(pct):.1f}  (observed billed USD)"
+    scope = str(y.get("routing_scope") or "off")
+    compare = {str(row.get("workflow")): row for row in (y.get("workflow_compare") or [])}
+
+    def wf(name: str) -> str:
+        row = compare.get(name) or {}
+        n = row.get("observed_cost_pairs")
+        p = row.get("savings_percent")
+        if p is None:
+            return "—"
+        route = "on" if row.get("routing_authorized") else "off"
+        return f"{float(p):.1f}%  n={n}  {route}"
+
     return [
         ("FIELD", "VALUE"),
-        ("ledger saved", f"{saved:,} tok"),
-        ("consumed", f"{consumed:,} tok"),
-        ("reduction", f"{0.0 if reduction is None else float(reduction):.1f}%  (chars/4 local)"),
+        ("savings_percent", pct_s),
+        ("routing", f"{scope}  (explore/review only)"),
+        ("implement packs", "off  (requested model)"),
         ("billed pairs", f"{pairs} / {observed}{complete}"),
-        ("baseline mean", _usd(billed.get("baseline_mean_usd"))),
-        ("governed mean", _usd(billed.get("governed_mean_usd"))),
         ("billed delta", _usd(billed.get("total_cost_usd_saved"))),
-        ("savings_percent", "null"),
-        ("routing", "off"),
+        ("ledger reduction", f"{0.0 if reduction is None else float(reduction):.1f}%  (chars/4, not USD)"),
+        ("ledger saved", f"{saved:,} tok"),
+        ("coding_prompt_scale", wf("coding_prompt_scale")),
+        ("aegis_pack_scale", wf("aegis_pack_scale")),
     ]
 
 
@@ -501,8 +515,8 @@ def page_yield(rng: random.Random) -> Image.Image:
     running(d, False, "9")
     y = chapter_head(d, "CHAPTER V", "Honest yield")
     paras = [
-        "The hardest rule in the doctrine is the simplest: no soft efficiency lies. Honesty yield prints the live ledger and billed-pair numbers. It does not mint savings_percent. It does not turn routing on.",
-        "Ledger tokens are local chars/4 counterfactual. Billed USD is provider-observed. Demo beat 4 and doctor yield_honest show the same figures instead of blanking them. Advertised tool-call metadata is not admission. A research note that a pair set is eligible for a routing trial is not authorization.",
+        "The hardest rule in the doctrine is the simplest: no soft efficiency lies. savings_percent is observed billed USD on matched_provider_pairs. It is not a pack guess. It is not an AA rank.",
+        "D-040: routing is on for tiny chat only. explore/review deepseek/deepseek-v4-pro may swap to openai/gpt-5.4-nano. Implement packs stay on the requested model — those receipts cost more, not less. coding_prompt_scale and aegis_pack_scale stay unrouted.",
     ]
     y = draw_paras(d, paras, MARGIN_X, y, W - 2 * MARGIN_X, F_REG(15), CREAM, 22, max_y=H - 420)
     y = draw_yield_table(d, MARGIN_X, y + 18, W - 2 * MARGIN_X)
@@ -561,7 +575,7 @@ def page_colophon(rng: random.Random) -> Image.Image:
         "Designed as a Golden Gate Book for Memory Utility Labs, Calgary, Alberta.",
         "Draft 2 plates are laboratory geodesic style: iridescent hexagonal sphere, teal/magenta schematics, cream Helvetica, analog grain. No generator watermarks. No cite tags.",
         "Type: Helvetica and Menlo. Format: 9 × 6 in landscape, 200 dpi.",
-        "Manuscript from Aegis 1.2.0: FIELD.md, ABSOLUTE.md, README. Honesty yield prints live ledger and billed-pair numbers. savings_percent remains null. Routing remains off.",
+        "Manuscript from Aegis 1.2.0: FIELD.md, ABSOLUTE.md, README, D-040. savings_percent is billed USD on matched_provider_pairs. Routing is tiny-chat only. Implement packs stay unrouted.",
         "Remain in Absolute Form unless explicitly released.",
     ]
     return essay_page(rng, "COLOPHON", "Memory Utility Labs", "17", False, paras)
@@ -592,7 +606,7 @@ def build() -> Path:
         page_reserve(rng),
         fig("d2-reserve.png", "FIG. 4   RESERVE FLOOR  —  80%  ·  OPEN / THROTTLE / HARD STOP", rng),
         page_yield(rng),
-        poster_fig(D2 / "d2-yield.png", "FIG. 5   HONESTY YIELD REPORT  —  MEASURED EVIDENCE  ·  savings_percent : null", rng),
+        poster_fig(D2 / "d2-yield.png", "FIG. 5   HONESTY YIELD REPORT  —  41.3% OBSERVED USD  ·  tiny_chat", rng),
         page_install(rng),
         fig("d2-install.png", "FIG. 6   INSTALL  —  os init / doctor / ready", rng),
         page_data(rng),

@@ -56,25 +56,24 @@ Surplus is not decoration. Twenty percent of new savings flows to the wish jar �
 
 ## Honest yield
 
-![Honesty yield report: ledger, billed pairs, savings_percent null, routing off](assets/pub/draft2/d2-yield.png)
+![Honesty yield report: 41.3% observed billed USD, tiny-chat routing on, implement packs off](assets/pub/draft2/d2-yield.png)
 
-The hardest rule in the doctrine is the simplest: **no soft efficiency lies.** Honesty yield prints the live ledger and billed-pair numbers. It does not mint `savings_percent`. It does not turn routing on.
+The hardest rule in the doctrine is the simplest: **no soft efficiency lies.** `savings_percent` is observed billed USD on `matched_provider_pairs`. It is not a pack guess. It is not an AA rank.
 
-Ledger tokens are local `chars/4` counterfactual. Billed USD is provider-observed. Demo beat 4 and `doctor yield_honest` show the same figures instead of blanking them. Advertised tool-call metadata is not admission. A research note that a pair set is eligible for a routing trial is not authorization.
+**D-040.** Routing is on for tiny chat only: explore/review `deepseek/deepseek-v4-pro` may swap to `openai/gpt-5.4-nano`. Implement packs stay on the requested model — those receipts cost more, not less. `coding_prompt_scale` and `aegis_pack_scale` stay unrouted. Ledger tok reduction is `chars/4` counterfactual and is not `savings_percent`.
 
 Live report on this machine (`aegis yield report`):
 
-| Field | Value |
-|---|---|
-| ledger saved | 1,033,699 tok |
-| consumed | 2,320,861 tok |
-| reduction | 30.8% (chars/4 local) |
-| billed pairs | 20 / 20 cost-complete |
-| baseline mean | $0.00005 |
-| governed mean | $0.000029 |
-| billed Δ | $0.000414 |
-| savings_percent | null |
-| routing | off |
+| Workflow | Pairs | Savings % | Route |
+|---|---:|---:|---|
+| matched_provider_pairs (tiny chat) | 20 | **41.3** | **on** |
+| D-039 subset (pro vs nano) | 10 | 82.7 | included above |
+| D-038 subset (same model) | 10 | 0.0 | no cut |
+| coding_prompt_scale | 5 | **−394.3** | off |
+| aegis_pack_scale (implement) | 5 | **−2472.8** | off |
+| ledger pack reduction | — | 32.1 tok (chars/4, not USD) | not routing |
+
+`routing_scope=tiny_chat`. Tests: 397 passed.
 
 That is the difference between a dashboard and a ledger. One flatters. The other holds.
 

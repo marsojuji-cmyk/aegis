@@ -88,6 +88,6 @@ aegis budget | surplus | version
 
 ## Version
 
-**1.2.0** — Master Aegis product OS (`pyproject.toml` / `src/aegis/__init__.py`). Hermes plugin identity stays 1.0.0. `savings_percent` remains null without an admitted pair.
+**1.2.0** — Master Aegis product OS (`pyproject.toml` / `src/aegis/__init__.py`). Hermes plugin identity stays 1.0.0. `savings_percent` is billed USD on `matched_provider_pairs` (D-040 tiny-chat). Implement packs stay unrouted.
 
 See [docs/EVOLUTION.md](docs/EVOLUTION.md) · [docs/ABSOLUTE.md](docs/ABSOLUTE.md) · [docs/FIELD.md](docs/FIELD.md)

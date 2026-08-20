@@ -10,9 +10,9 @@ This file is the product boundary. Later install, API, docs, and acceptance work
 
 **Name:** AGIS/Aegis  
 **What it is:** a local agent operating system: process table, memory accounting, capability drivers, syscalls, portable `AEGIS_HOME`, frozen HTTP `/v1`, honest yield harness. Optional this-host extras: Cursor, Hermes, AGIS MUL.  
-**What it is not:** a host kernel (Darwin/Windows/Linux), a hosted service, or a claimed model-savings product.
+**What it is not:** a host kernel (Darwin/Windows/Linux), a hosted service, or a claimed *global* model-savings product. Tiny-chat billed USD (D-040) is in scope; implement-pack routing is not.
 
-**Problem:** wasted context and unproven spend. The product packs, reuses, meters, gates, and retrieves with receipts — it does not grow autonomy or claim `savings_percent` without an admitted pair.
+**Problem:** wasted context and unproven spend. The product packs, reuses, meters, gates, and retrieves with receipts. `savings_percent` is observed billed USD on `matched_provider_pairs` (D-040). It is not ledger `chars/4`. Implement packs are not routed.
 
 **Operator:** one human per `AEGIS_HOME` (or `$AEGIS_USER` namespace). Local-first. Second machine via `pip install -e .` + `aegis os init`.
 
@@ -59,7 +59,7 @@ This file is the product boundary. Later install, API, docs, and acceptance work
 7. Auto-tick
 8. Parallel fan-out while reserve signal is `throttle`
 9. Encoder (Q-013 locked-observe)
-10. `savings_percent` claims (ledger saved tokens and billed-pair USD print as measured; they stay labeled counterfactual / observed and do not mint `savings_percent` or authorize routing)
+10. Global model routing and implement-pack routing. Tiny-chat explore/review (D-040) may swap `deepseek-v4-pro` → `gpt-5.4-nano`. `savings_percent` is billed USD on `matched_provider_pairs` only — not ledger `chars/4`.
 11. Hosted / cloud processing
 12. Consumer marketplace / SaaS tenancy
 13. Host kernel / drivers / process isolation of the machine OS

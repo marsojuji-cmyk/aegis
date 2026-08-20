@@ -45,9 +45,9 @@ Ledger: `~/.aegis/guard_log.jsonl`. Rotate: `aegis guard rotate`. Hermes wrapper
 
 `aegis hermes search|resolve` is a thin read-only CLI over the local index. Track first. Perplexity only for a live external miss. Perplexity never edits.
 
-Coordination pathways are drawn. Product routing is not authorized. `routing_authorized` stays false. Honesty yield prints measured ledger and billed-pair numbers; `savings_percent` stays null. Advertised tool-call metadata is not admission. A research note is not a routing trial.
+Coordination pathways are drawn. Tiny-chat routing is on (D-040): explore/review `deepseek/deepseek-v4-pro` may swap to `openai/gpt-5.4-nano`. Implement packs stay on the requested model. `savings_percent` is observed billed USD on `matched_provider_pairs` (41.3% on 20 pairs). Ledger tok reduction is not that number. `coding_prompt_scale` and `aegis_pack_scale` stay unrouted.
 
-The index is a marshal. It is not a switch.
+The index is a marshal. Tiny-chat is a scoped trial, not a global switch. Implement packs are not routed.
 
 ---
 

@@ -104,7 +104,7 @@ def page_title(rng: random.Random) -> Image.Image:
     col = [
         "Volume I stated the law. This volume states the machinery.",
         "Control plane. Token capacity basin. Guard middleware. Hermes routing.",
-        "Honesty yield prints ledger and billed-pair numbers. savings_percent stays null. Product routing stays off.",
+        "Honesty yield: savings_percent is billed USD on matched_provider_pairs (D-040). Routing is tiny-chat only. Implement packs stay off.",
         "Absolute Form: austere · aggressive on drift · protective reserve (>=80%).",
     ]
     v1.draw_paras(d, col, tx, 500, tw, F_REG(15), CREAM, 22)
@@ -128,7 +128,7 @@ def page_contents(rng: random.Random) -> Image.Image:
         ("5", "III. Guard middleware"),
         ("6", "     allow | deny | require-review"),
         ("7", "IV.  Hermes routing"),
-        ("8", "     search is live; switching is not"),
+        ("8", "     tiny-chat on; implement packs off"),
         ("9", "Colophon"),
     ]
     left, right = items[:7], items[7:]
@@ -146,7 +146,7 @@ def page_contents(rng: random.Random) -> Image.Image:
     d.line((MARGIN_X, H - 100, W - MARGIN_X, H - 100), fill=RULE, width=1)
     d.text(
         (MARGIN_X, H - 88),
-        "Issue 1.  Routing remains unauthorized.  Where a number is not proven, it stays null.",
+        "Issue 1.  Tiny-chat routing on (D-040).  Implement packs stay off.  Pack guesses stay unlabeled as savings_percent.",
         font=F_OBL(14),
         fill=CREAM_DIM,
     )
@@ -186,9 +186,9 @@ def page_guard(rng: random.Random) -> Image.Image:
 def page_hermes(rng: random.Random) -> Image.Image:
     paras = [
         "aegis hermes search|resolve is a thin read-only CLI over the local index. Track first. Perplexity only for a live external miss. Perplexity never edits.",
-        "Coordination pathways are drawn. Product routing is not authorized. routing_authorized stays false. savings_percent stays null until a matched, admitted pair of runs proves the delta.",
+        "Coordination pathways are drawn. Tiny-chat routing is on (D-040): explore/review v4-pro may swap to nano. Implement packs stay on the requested model. savings_percent is observed billed USD, not a pack guess.",
         "Advertised tool-call metadata is not admission. A research note is not a routing trial. The index is a marshal. It is not a switch.",
-        "Volume I withheld the yield number. This volume withholds the route. Both are the same honesty.",
+        "The index is a marshal. Tiny-chat is a scoped trial, not a global switch. Implement packs are not routed.",
     ]
     return essay_page(rng, "CHAPTER IV", "Hermes routing", "7", False, paras)
 
@@ -198,7 +198,7 @@ def page_colophon(rng: random.Random) -> Image.Image:
         "Designed as a Golden Gate Book for Memory Utility Labs, Calgary, Alberta.",
         "Volume II plates follow 1970s NASA / GSFC technical-poster language: charcoal ground, cream Helvetica, muted teal / brick / mustard, drafting marks, analog grain. Chapter figures are the four system posters.",
         "Type: Helvetica. Format: 9 x 6 in landscape, 200 dpi. Product 1.2.0. Issue 1. 2026.",
-        "Manuscript from FIELD.md, FIRST_RELEASE.md, guard and Hermes wrapper. Honesty yield prints measured ledger and billed-pair numbers. routing_authorized remains false. savings_percent remains null.",
+        "Manuscript from FIELD.md, FIRST_RELEASE.md, D-040. savings_percent is billed USD on matched_provider_pairs. Tiny-chat routing on. Implement packs unrouted.",
         "Remain in Absolute Form unless explicitly released.",
     ]
     return essay_page(rng, "COLOPHON", "Memory Utility Labs", "9", True, paras)
