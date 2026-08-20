@@ -245,7 +245,8 @@ def outcome_report(*, workflow: str = "production_code_change") -> Dict[str, Any
                 "ignored_outcome_rows": evidence["ignored_rows"],
                 "minimum_matched_tasks": MINIMUM_MATCHED_TASKS,
                 "cost_decision": "withhold: no matched outcomes with provider-cost evidence",
-                "decision": "withhold: no matched baseline/governed outcomes"}
+                "decision": "withhold: no matched baseline/governed outcomes",
+                "savings_percent": None}
     base = [pair["baseline"] for pair in pairs]
     governed = [pair["governed"] for pair in pairs]
     acceptance_delta = (sum(x["accepted"] for x in governed) - sum(x["accepted"] for x in base)) / len(pairs)
@@ -259,6 +260,14 @@ def outcome_report(*, workflow: str = "production_code_change") -> Dict[str, Any
     cost_delta = (
         sum(b["cost_usd"] - g["cost_usd"] for b, g in observed_cost_pairs)
         if cost_complete else None
+    )
+    baseline_usd_sum = (
+        sum(b["cost_usd"] for b, _g in observed_cost_pairs) if cost_complete else None
+    )
+    savings_percent = (
+        round((cost_delta / baseline_usd_sum) * 100.0, 1)
+        if cost_complete and cost_delta is not None and baseline_usd_sum
+        else None
     )
     cost_decision = (
         "available: all matched pairs have observed provider-cost evidence"
@@ -296,6 +305,7 @@ def outcome_report(*, workflow: str = "production_code_change") -> Dict[str, Any
             "cost_comparison_complete": cost_complete,
             "cost_decision": cost_decision,
             "total_cost_usd_saved": None if cost_delta is None else round(cost_delta, 6),
+            "savings_percent": savings_percent,
             "routing_authorized": authorized,
             "decision": decision}
 

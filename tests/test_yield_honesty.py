@@ -1,4 +1,4 @@
-"""Honesty yield surfaces live ledger + billed-pair numbers. savings_percent stays null."""
+"""Honesty yield surfaces live ledger + billed-pair USD. savings_percent is billed math."""
 
 import json
 
@@ -52,6 +52,9 @@ def test_yield_report_empty_home_is_numeric_not_null(aegis_tmp):
     assert billed["total_cost_usd_saved"] is None
     assert billed["baseline_mean_usd"] is None
     assert billed["routing_authorized"] is False
+    assert billed["savings_percent"] is None
+    assert body["routing_authorized"] is False
+    assert body["workflow_compare"] == []
 
 
 def test_yield_report_uses_live_ledger_and_billed_pairs(aegis_tmp):
@@ -60,7 +63,9 @@ def test_yield_report_uses_live_ledger_and_billed_pairs(aegis_tmp):
     _pair(task_id="yh-1", baseline_usd=1.0, governed_usd=0.4)
 
     body = yield_report()
-    assert body["savings_percent"] is None
+    assert body["savings_percent"] == 60.0
+    assert body["savings_percent_accounting"] == "observed_billed_usd"
+    assert body["routing_authorized"] is False
     assert body["ledger_tokens_saved_local"] == 600
     assert body["ledger_tokens_consumed"] == 400
     assert body["ledger_reduction_percent_local"] == 60.0
@@ -71,8 +76,11 @@ def test_yield_report_uses_live_ledger_and_billed_pairs(aegis_tmp):
     assert billed["baseline_mean_usd"] == 1.0
     assert billed["governed_mean_usd"] == 0.4
     assert billed["total_cost_usd_saved"] == 0.6
+    assert billed["savings_percent"] == 60.0
     assert billed["mean_seconds_saved"] == 1.0
     assert billed["routing_authorized"] is False
+    assert body["workflow_compare"][0]["workflow"] == PAIR_WORKFLOW
+    assert body["workflow_compare"][0]["savings_percent"] == 60.0
 
 
 def test_prove_counterfactual_is_a_real_percent(aegis_tmp, tmp_path):
@@ -97,7 +105,7 @@ def test_honesty_and_demo_print_live_numbers(aegis_tmp, tmp_path):
 
     beat = honesty()
     live = beat["live_yield"]
-    assert beat["savings_percent"] is None
+    assert beat["savings_percent"] == 75.0
     assert beat["routing_authorized"] is False
     assert live["ledger_tokens_saved_local"] == 600
     assert live["billed_pairs"]["total_cost_usd_saved"] == 0.015
@@ -113,7 +121,7 @@ def test_honesty_and_demo_print_live_numbers(aegis_tmp, tmp_path):
     assert "ledger_saved=600 tok" in text
     assert "billed_pairs=1" in text
     assert "Δ$0.015" in text
-    assert "savings_percent=null" in text
+    assert "savings_percent=75.0" in text
 
 
 def test_doctor_yield_honest_passes_with_real_numbers(aegis_tmp):
@@ -124,7 +132,7 @@ def test_doctor_yield_honest_passes_with_real_numbers(aegis_tmp):
     by = {c["name"]: c for c in report["checks"]}
     assert by["yield_honest"]["pass"] is True
     detail = by["yield_honest"]["detail"]
-    assert "savings_percent=None" in detail
+    assert "savings_percent=75.0" in detail
     assert "ledger_saved=400" in detail
     assert "billed_Δusd=1.5" in detail
 
@@ -136,7 +144,7 @@ def test_yield_report_cli_json(aegis_tmp, capsys):
     assert main(["yield", "report"]) == 0
     payload = json.loads(capsys.readouterr().out)
     result = payload.get("result") or payload
-    assert result["savings_percent"] is None
+    assert result["savings_percent"] == 62.5
     assert result["ledger_tokens_saved_local"] == 200
     assert result["billed_pairs"]["total_cost_usd_saved"] == 0.5
     assert result["billed_pairs"]["routing_authorized"] is False

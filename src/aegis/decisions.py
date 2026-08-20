@@ -167,16 +167,19 @@ def _probe_d018() -> Dict[str, Any]:
 
 
 def _probe_d019() -> Dict[str, Any]:
-    from aegis.yield_proof import yield_report
+    from aegis.yield_proof import yield_is_honest, yield_report
 
     rep = yield_report()
-    aligned = rep.get("savings_percent") is None
+    aligned = yield_is_honest(rep) and not rep.get("admitted_pair")
     return _ok(
         "D-019",
         verdict="park",
         aligned=aligned,
-        evidence="R-014 parked; savings_percent null without admitted pair",
-        action="keep park; report counterfactual separately from observed spend",
+        evidence=(
+            f"R-014 parked admitted_pair={rep.get('admitted_pair')} "
+            f"billed_savings_percent={rep.get('savings_percent')}"
+        ),
+        action="keep Hermes pair parked; billed USD percent is D-040 tiny-chat only",
     )
 
 
@@ -357,7 +360,7 @@ def _probe_d031() -> Dict[str, Any]:
 def _probe_d032() -> Dict[str, Any]:
     from aegis.config import load_config, opt_in
     from aegis.pack_cache import covering_pack
-    from aegis.yield_proof import yield_report
+    from aegis.yield_proof import yield_is_honest, yield_report
 
     cfg = load_config()
     armed = [
@@ -366,14 +369,14 @@ def _probe_d032() -> Dict[str, Any]:
         if opt_in(cfg, n)
     ]
     yld = yield_report()
-    honest = yld.get("savings_percent") is None
+    honest = yield_is_honest(yld)
     aligned = callable(covering_pack) and not armed and honest
     return _ok(
         "D-032",
         verdict="keep" if aligned else "repair",
         aligned=aligned,
-        evidence=f"covering=yes armed={armed or 'none'} savings_percent={yld.get('savings_percent')}",
-        action="keep covering reuse + hash verify; do not thaw autonomy or claim savings_percent",
+        evidence=f"covering=yes armed={armed or 'none'} savings_percent={yld.get('savings_percent')} routing={yld.get('routing_scope')}",
+        action="keep covering reuse + hash verify; billed USD percent only; implement routing off",
     )
 
 

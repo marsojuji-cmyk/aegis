@@ -210,13 +210,13 @@ def _release_program_checks() -> List[Check]:
     try:
         from aegis.config import load_config, opt_in
         from aegis.ledger import generate_report
-        from aegis.yield_proof import yield_report
+        from aegis.yield_proof import yield_is_honest, yield_report
 
         cfg = load_config()
         flags = ("auto_tick", "auto_invest", "auto_apply_fixes", "auto_memory")
         armed = [n for n in flags if opt_in(cfg, n)]
         yld = yield_report()
-        honest = yld.get("savings_percent") is None
+        honest = yield_is_honest(yld)
         try:
             rate = float((generate_report() or {}).get("reuse_hit_rate_percent") or 0)
         except Exception:  # noqa: BLE001

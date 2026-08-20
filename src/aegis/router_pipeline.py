@@ -100,6 +100,10 @@ def run_pipeline(
     """
     paths = list(paths or [])
     targets = list(targets or [])
+    from aegis.routing import apply_route
+
+    route_meta = apply_route(model=model, mode=mode)
+    model = str(route_meta.get("model") or model)
     prov = detect_provider(model, provider)
     # Enforce output discipline before dispatch. Post-hoc shrinking cannot
     # recover tokens or context already spent by the upstream model.
@@ -112,7 +116,7 @@ def run_pipeline(
     except Exception:  # noqa: BLE001
         max_tokens = max(1, int(max_tokens))
     pack_id = None
-    preflight_meta: Dict[str, Any] = {}
+    preflight_meta: Dict[str, Any] = {"route": route_meta}
 
     if paths and not skip_preflight:
         pf = run_preflight(
@@ -133,6 +137,7 @@ def run_pipeline(
             "quality": pf.quality_grade,
             "reserve": pf.reserve_signal,
             "recovered": pf.recovered,
+            "route": route_meta,
         }
         if not pf.ok and pf.reserve_signal == "hard_stop":
             return RunResult(

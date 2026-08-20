@@ -1,4 +1,5 @@
-# Changelog
+- **2026-08-20**: D-040 — billed `savings_percent` on matched_provider_pairs (41.3%). Tiny-chat routing on. Implement packs stay unrouted (pack-scale −2472.8%).
+
 
 - **2026-08-19**: `aegis guard rotate [--if-larger-mb N]` — guard-log rotation as a product surface (`rotate_guard_log` in guard.py). Timestamped `v2-archive` + paired manifest (sha256/lines/bytes), fail-closed on missing/empty (exit 2), `below_threshold` exits 0 for schedulable size caps. Live smoke on production log: below_threshold, untouched. 387 tests pass.
 

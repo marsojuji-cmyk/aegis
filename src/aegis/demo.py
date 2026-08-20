@@ -221,9 +221,11 @@ def honesty() -> Dict[str, Any]:
             "savings_percent from AA",
             "turn routing on from ranks",
             "hosted SKU",
+            "route implement packs to nano",
         ],
-        "savings_percent": None,
-        "routing_authorized": False,
+        "savings_percent": yld.get("savings_percent"),
+        "routing_authorized": bool(billed.get("routing_authorized")),
+        "routing_scope": billed.get("routing_scope") or "off",
         "source": "artificialanalysis.ai model pages (frozen) + live ledger + matched_provider_pairs",
     }
 
@@ -265,8 +267,9 @@ def run(paths: Sequence[str], *, skip_pack: bool = False) -> Dict[str, Any]:
     close_ok = bool(ready.get("product_ready")) and (skip_pack or bool(packed.get("ok")))
     return {
         "ok": close_ok,
-        "savings_percent": None,
-        "routing_authorized": False,
+        "savings_percent": yield_body.get("savings_percent"),
+        "routing_authorized": bool(yield_body.get("routing_authorized")),
+        "routing_scope": yield_body.get("routing_scope") or "off",
         "clock": status(),
         "beat1_ready": {
             "ok": ready.get("ok"),
@@ -288,13 +291,16 @@ def run(paths: Sequence[str], *, skip_pack: bool = False) -> Dict[str, Any]:
         "beat4_honesty": honesty(),
         "yield": {
             "accounting": yield_body.get("accounting"),
-            "savings_percent": None,
+            "savings_percent": yield_body.get("savings_percent"),
             "admitted_pair": yield_body.get("admitted_pair"),
             "ledger_tokens_saved_local": yield_body.get("ledger_tokens_saved_local"),
             "ledger_tokens_consumed": yield_body.get("ledger_tokens_consumed"),
             "ledger_reduction_percent_local": yield_body.get("ledger_reduction_percent_local"),
             "reuse_hit_rate": yield_body.get("reuse_hit_rate"),
             "billed_pairs": yield_body.get("billed_pairs"),
+            "workflow_compare": yield_body.get("workflow_compare"),
+            "routing_authorized": yield_body.get("routing_authorized"),
+            "routing_scope": yield_body.get("routing_scope"),
         },
         "spoken": list(SPOKEN),
     }
@@ -305,8 +311,15 @@ def format_run(body: Dict[str, Any]) -> str:
     b1 = body.get("beat1_ready") or {}
     b2 = body.get("beat2_pack") or {}
     b3 = body.get("beat3_price") or {}
+    yld = body.get("yield") or {}
+    billed = yld.get("billed_pairs") or {}
+    usd = billed.get("total_cost_usd_saved")
+    usd_s = "none" if usd is None else f"{usd}"
+    pct = yld.get("savings_percent")
+    pct_s = "null" if pct is None else str(pct)
+    scope = yld.get("routing_scope") or body.get("routing_scope") or "off"
     lines = [
-        f"Aegis demo  Path A  ok={body.get('ok')}  savings_percent=null  routing=off",
+        f"Aegis demo  Path A  ok={body.get('ok')}  savings_percent={pct_s}  routing={scope}",
         f"  clock  days_left={clock.get('days_left')}  deadline={clock.get('deadline')}  "
         f"buyer={clock.get('buyer_name') or 'UNNAMED'}",
         f"  beat1  os ready ok={b1.get('ok')}  product_ready={b1.get('product_ready')}  v{b1.get('version')}",
@@ -319,10 +332,6 @@ def format_run(body: Dict[str, Any]) -> str:
             f"first_reuse={((b2.get('first') or {}).get('reuse'))}  "
             f"second_reuse={((b2.get('second') or {}).get('reuse'))}"
         )
-    yld = body.get("yield") or {}
-    billed = yld.get("billed_pairs") or {}
-    usd = billed.get("total_cost_usd_saved")
-    usd_s = "none" if usd is None else f"{usd}"
     lines.append(
         f"  beat3  source mid ${b3.get('source_mid_usd')}  exclusive mid ${b3.get('exclusive_mid_usd')}  "
         f"hosted=not offered"
@@ -330,7 +339,7 @@ def format_run(body: Dict[str, Any]) -> str:
     lines.append(
         f"  beat4  AA Pro 53 > nano 40  ledger_saved={yld.get('ledger_tokens_saved_local')} tok  "
         f"reduction={yld.get('ledger_reduction_percent_local')}%  "
-        f"billed_pairs={billed.get('paired_tasks')}  Δ${usd_s}  savings_percent=null"
+        f"billed_pairs={billed.get('paired_tasks')}  Δ${usd_s}  savings_percent={pct_s}  routing={scope}"
     )
     lines.append("  say:")
     for beat in body.get("spoken") or SPOKEN:
