@@ -224,6 +224,16 @@ def plate_page(path: Path, caption: str, rng: random.Random) -> Image.Image:
     return scuff(im.convert("RGB"), rng)
 
 
+def poster_fig(path: Path, caption: str, rng: random.Random) -> Image.Image:
+    """Portrait report plates: letterbox. Do not crop title, gauges, or footer."""
+    im = letterbox_plate(path, (W, H))
+    im = ImageEnhance.Contrast(im).enhance(1.03)
+    im = scuff(im, rng)
+    d = ImageDraw.Draw(im)
+    d.text((28, H - 42), caption, font=F_LIGHT(11), fill=CREAM_DIM)
+    return im
+
+
 def cover(rng: random.Random) -> Image.Image:
     return scuff(fit_plate(D2 / "d2-cover.png", (W, H)), rng)
 
@@ -582,7 +592,7 @@ def build() -> Path:
         page_reserve(rng),
         fig("d2-reserve.png", "FIG. 4   RESERVE FLOOR  —  80%  ·  OPEN / THROTTLE / HARD STOP", rng),
         page_yield(rng),
-        fig("d2-yield.png", "FIG. 5   HONEST YIELD  —  LEDGER + BILLED PAIRS  ·  savings_percent : null", rng),
+        poster_fig(D2 / "d2-yield.png", "FIG. 5   HONESTY YIELD REPORT  —  MEASURED EVIDENCE  ·  savings_percent : null", rng),
         page_install(rng),
         fig("d2-install.png", "FIG. 6   INSTALL  —  os init / doctor / ready", rng),
         page_data(rng),

@@ -56,6 +56,8 @@ Surplus is not decoration. Twenty percent of new savings flows to the wish jar â
 
 ## Honest yield
 
+![Honesty yield report: ledger, billed pairs, savings_percent null, routing off](assets/pub/draft2/d2-yield.png)
+
 The hardest rule in the doctrine is the simplest: **no soft efficiency lies.** Honesty yield prints the live ledger and billed-pair numbers. It does not mint `savings_percent`. It does not turn routing on.
 
 Ledger tokens are local `chars/4` counterfactual. Billed USD is provider-observed. Demo beat 4 and `doctor yield_honest` show the same figures instead of blanking them. Advertised tool-call metadata is not admission. A research note that a pair set is eligible for a routing trial is not authorization.
