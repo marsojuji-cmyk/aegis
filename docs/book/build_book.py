@@ -269,8 +269,7 @@ def page_title(rng: random.Random) -> Image.Image:
         "Absolute Form: austere · aggressive on drift · protective reserve (≥80%).",
     ]
     draw_paras(d, col, tx, 470, tw, F_REG(15), CREAM, 22)
-    d.text((tx, H - 90), "$1.75", font=F_BOLD(18), fill=TEAL)
-    d.text((tx + 80, H - 88), "GOLDEN GATE BOOK", font=F_REG(13), fill=CREAM_DIM)
+    d.text((tx, H - 90), "GOLDEN GATE BOOK", font=F_REG(13), fill=CREAM_DIM)
     return im
 
 
