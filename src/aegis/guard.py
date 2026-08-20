@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
+import hashlib
 import json
 import time
 from dataclasses import dataclass
@@ -20,6 +21,63 @@ _ACTIVE_GUARD: Optional[AegisGuard] = None
 
 # Persistent guard log path (JSONL format)
 GUARD_LOG_PATH = Path.home() / ".aegis" / "guard_log.jsonl"
+
+
+def rotate_guard_log(log_path: Path, if_larger_mb: Optional[float] = None) -> Dict[str, Any]:
+    """Rotate a guard JSONL log to a timestamped archive plus manifest.
+
+    Writers open/append/close per event (see _persist_decision), so the live
+    log is recreated on the next write — no daemon restart required.
+    """
+    result: Dict[str, Any] = {"rotated": False, "log_path": str(log_path)}
+    if not log_path.exists() or log_path.stat().st_size == 0:
+        result["reason"] = "empty_log"
+        return result
+
+    size_bytes = log_path.stat().st_size
+    result["size_bytes"] = size_bytes
+    if if_larger_mb is not None and size_bytes < if_larger_mb * 1024 * 1024:
+        result["reason"] = "below_threshold"
+        return result
+
+    sha = hashlib.sha256()
+    lines = 0
+    with open(log_path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            sha.update(chunk)
+            lines += chunk.count(b"\n")
+
+    ts = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    n = 1
+    while True:
+        suffix = "" if n == 1 else f"-{n}"
+        archive = log_path.with_name(f"guard_log.v2-archive-{ts}{suffix}.jsonl")
+        manifest_path = log_path.with_name(f"guard_log.v2-split-{ts}{suffix}.manifest.json")
+        if not archive.exists() and not manifest_path.exists():
+            break
+        n += 1
+
+    os.replace(log_path, archive)
+    manifest = {
+        "source_sha256": sha.hexdigest(),
+        "source_lines": lines,
+        "source_bytes": size_bytes,
+        "archive_file": archive.name,
+        "rotation_reason": "aegis guard rotate",
+        "timestamp_utc": ts,
+        "tool_version": "1.0",
+        "paused_concurrent_writers": False,
+        "writer_model": "per-event open/append/close; fresh live log auto-created on next write",
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    result.update({
+        "rotated": True,
+        "archive": str(archive),
+        "manifest": str(manifest_path),
+        "source_lines": lines,
+        "source_sha256": manifest["source_sha256"],
+    })
+    return result
 
 
 class AegisGuardError(Exception):

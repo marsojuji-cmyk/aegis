@@ -719,6 +719,21 @@ def _cmd_guard(args: argparse.Namespace) -> int:
             print(f"  Allowed domains: {', '.join(out['mission_lock']['allowed_domains']) or 'unset'}")
         return 0
 
+    if args.guard_action == "rotate":
+        from aegis.guard import GUARD_LOG_PATH, rotate_guard_log
+        res = rotate_guard_log(GUARD_LOG_PATH, if_larger_mb=args.if_larger_mb)
+        if args.json:
+            print(json.dumps(res, indent=2))
+        elif res["rotated"]:
+            print(f"Rotated {res['source_lines']} lines ({res['size_bytes']} B)")
+            print(f"  Archive: {res['archive']}")
+            print(f"  Manifest: {res['manifest']}")
+        else:
+            print(f"No rotation: {res['reason']} (log: {res['log_path']})")
+        if res["rotated"] or res.get("reason") == "below_threshold":
+            return 0
+        return 2
+
     if args.guard_action == "log":
         # Try persistent log first
         from pathlib import Path
@@ -2986,6 +3001,12 @@ def build_parser() -> argparse.ArgumentParser:
     gdl = gd_sub.add_parser("log", help="Print recent guard decisions from live memory")
     gdl.add_argument("--json", action="store_true")
     gdl.set_defaults(func=_cmd_guard)
+
+    gdr = gd_sub.add_parser("rotate", help="Rotate guard_log.jsonl to a timestamped archive with manifest")
+    gdr.add_argument("--if-larger-mb", type=float, default=None,
+                     help="Rotate only when the log is at least this many MB")
+    gdr.add_argument("--json", action="store_true")
+    gdr.set_defaults(func=_cmd_guard)
 
     sp = sub.add_parser("sprint", help="Sprint ledger — track Aegis work in iterations")
     sp_sub = sp.add_subparsers(dest="sprint_action", required=True)
