@@ -2,7 +2,7 @@
 
 **A Memory Utility Publication · Memory Utility Labs / Calgary, Alberta**
 
-Formatted volume: [Introducing AEGIS Draft 2 (PDF)](book/Introducing-AEGIS-draft2.pdf) — 9×6 landscape, 23 pages, geodesic plates facing each chapter. Rebuild: `python3 docs/book/build_book.py`. Prior Pelican draft: [Draft 1](book/Introducing-AEGIS.pdf).
+Formatted volume: [Introducing AEGIS Draft 2 (PDF)](book/Introducing-AEGIS-draft2.pdf) — 9×6 landscape, 25 pages, live type, geodesic plates facing each chapter. Rebuild: `python3 docs/book/build_book.py`. Prior Pelican draft: [Draft 1](book/Introducing-AEGIS.pdf).
 
 ![Cover plate: Introducing AEGIS, Technical Specifications Vol. I](assets/pub/aegis-hero.png)
 

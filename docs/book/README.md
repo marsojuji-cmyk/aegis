@@ -2,7 +2,7 @@
 
 Memory Utility Labs monograph. 9 × 6 in landscape, 200 dpi.
 
-**Draft 2** (current build): geodesic laboratory plates — iridescent sphere, teal/magenta schematics, cream Helvetica. Each chapter is an essay page plus a full-bleed figure that matches that chapter. No generator watermarks, no cite tags.
+**Draft 2** (current build): geodesic laboratory plates — iridescent sphere, teal/magenta schematics, cream Helvetica. Live type on every text page. Plates are unlabeled; captions live in the bar. Each chapter is an essay plus a facing figure. No generator watermarks, no cite tags.
 
 ```bash
 python3 docs/book/build_book.py
