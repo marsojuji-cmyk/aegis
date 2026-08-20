@@ -148,16 +148,82 @@ def bench(paths: Sequence[str], *, rounds: int = 12, task: str = "bench") -> Dic
     }
 
 
+def _mean(values: List[float]) -> float | None:
+    if not values:
+        return None
+    return round(sum(values) / float(len(values)), 6)
+
+
+def _observed_usd(row: Dict[str, Any]) -> float | None:
+    from aegis.outcomes import OBSERVED_COST_STATUSES, UNTRUSTED_ROUTING_COST_SOURCES
+
+    source = str(row.get("cost_source") or "").strip().lower()
+    if row.get("cost_status") not in OBSERVED_COST_STATUSES:
+        return None
+    if not source or source in UNTRUSTED_ROUTING_COST_SOURCES:
+        return None
+    usd = row.get("cost_usd")
+    if not isinstance(usd, (int, float)):
+        return None
+    return float(usd)
+
+
+def billed_pair_snapshot() -> Dict[str, Any]:
+    """Live matched-pair dollars. Does not mint savings_percent or turn routing on."""
+    from aegis.outcomes import load_outcome_evidence, outcome_report
+    from aegis.receipt_collect import PAIR_WORKFLOW
+
+    report = outcome_report(workflow=PAIR_WORKFLOW)
+    grouped: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    for row in load_outcome_evidence()["rows"]:
+        if row.get("workflow") != PAIR_WORKFLOW:
+            continue
+        grouped.setdefault(str(row["task_id"]), {})[str(row["variant"])] = row
+    baseline_usd: List[float] = []
+    governed_usd: List[float] = []
+    for pair in grouped.values():
+        if "baseline" not in pair or "governed" not in pair:
+            continue
+        base = _observed_usd(pair["baseline"])
+        gov = _observed_usd(pair["governed"])
+        if base is None or gov is None:
+            continue
+        baseline_usd.append(base)
+        governed_usd.append(gov)
+    paired = int(report.get("paired_tasks") or 0)
+    return {
+        "workflow": PAIR_WORKFLOW,
+        "paired_tasks": paired,
+        "observed_cost_pairs": int(report.get("observed_cost_pairs") or 0),
+        "cost_comparison_complete": bool(report.get("cost_comparison_complete")),
+        "baseline_mean_usd": _mean(baseline_usd),
+        "governed_mean_usd": _mean(governed_usd),
+        "total_cost_usd_saved": report.get("total_cost_usd_saved"),
+        "mean_seconds_saved": report.get("mean_seconds_saved"),
+        "acceptance_delta": report.get("acceptance_delta"),
+        "outcome_decision": report.get("decision"),
+        "routing_authorized": False,
+    }
+
+
 def yield_report() -> Dict[str, Any]:
     from aegis.ledger import generate_report
 
     report = generate_report()
+    billed = billed_pair_snapshot()
+    saved = int(report.get("total_tokens_saved") or 0)
+    consumed = int(report.get("total_tokens_consumed") or 0)
+    reduction = report.get("overall_token_reduction_percent")
+    reuse = report.get("reuse_hit_rate_percent")
     return {
         "ok": True,
         "accounting": ACCOUNTING,
         "savings_percent": None,
         "admitted_pair": admitted_pair_present(),
-        "ledger_tokens_saved_local": report.get("total_tokens_saved"),
-        "reuse_hit_rate": report.get("reuse_hit_rate_percent"),
-        "note": "ledger saved tokens are local counterfactual unless admitted_pair",
+        "ledger_tokens_saved_local": saved,
+        "ledger_tokens_consumed": consumed,
+        "ledger_reduction_percent_local": 0.0 if reduction is None else float(reduction),
+        "reuse_hit_rate": 0.0 if reuse is None else float(reuse),
+        "billed_pairs": billed,
+        "note": "ledger tokens are local chars/4 counterfactual; billed USD is provider-observed. savings_percent stays null.",
     }

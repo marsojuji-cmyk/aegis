@@ -13,7 +13,7 @@
 - D-022–D-029: index/graph/search/sprint/pack_id/skills/Flow.
 - D-030 MUL 9→20; D-033/034 20→32. Graph frozen. No MUL thaw D-036/037.
 - D-031: 1.2.0 OS. Overlay ≠ SKU. `doctor --product` second-machine floor.
-- D-032: covering reuse + hash verify. `os ready`. Freeze+honest yield on doctor.
+- D-032: covering reuse + hash verify. `os ready`. Freeze+honest yield on doctor. Yield/honesty print live ledger + billed-pair USD; `savings_percent` stays null.
 - D-036: five consecutive real receipts = window ready, not routing. Live window READY.
 - D-038: 10 billed matched pairs, same model. Δcost=0. Routing withheld.
 - D-039: nano cheaper only on tiny chat. Implement pack: Pro $0.00005 vs nano $0.00085 (~17×). Routing off.

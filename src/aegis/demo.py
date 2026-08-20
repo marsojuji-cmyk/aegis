@@ -198,11 +198,22 @@ def pack_twice(paths: Sequence[str]) -> Dict[str, Any]:
 
 
 def honesty() -> Dict[str, Any]:
+    from aegis.yield_proof import yield_report
+
+    yld = yield_report()
+    billed = dict(yld.get("billed_pairs") or {})
     return {
         "aa_index_version": AA_INDEX_VERSION,
         "aa_as_of": AA_AS_OF,
         "aa_models": list(AA_MODELS),
         "billed_implement": dict(BILLED_IMPLEMENT),
+        "live_yield": {
+            "ledger_tokens_saved_local": yld.get("ledger_tokens_saved_local"),
+            "ledger_tokens_consumed": yld.get("ledger_tokens_consumed"),
+            "ledger_reduction_percent_local": yld.get("ledger_reduction_percent_local"),
+            "reuse_hit_rate": yld.get("reuse_hit_rate"),
+            "billed_pairs": billed,
+        },
         "agree": "Do not route implement work to nano. AA 40 vs Pro 53. Billed implement nano ~17x Pro.",
         "disagree": "AA list cost-per-task can make nano look cheaper. This stack's receipts say the opposite.",
         "forbidden": [
@@ -213,7 +224,7 @@ def honesty() -> Dict[str, Any]:
         ],
         "savings_percent": None,
         "routing_authorized": False,
-        "source": "artificialanalysis.ai model pages (frozen) + D-039 billed pairs",
+        "source": "artificialanalysis.ai model pages (frozen) + live ledger + matched_provider_pairs",
     }
 
 
@@ -279,6 +290,11 @@ def run(paths: Sequence[str], *, skip_pack: bool = False) -> Dict[str, Any]:
             "accounting": yield_body.get("accounting"),
             "savings_percent": None,
             "admitted_pair": yield_body.get("admitted_pair"),
+            "ledger_tokens_saved_local": yield_body.get("ledger_tokens_saved_local"),
+            "ledger_tokens_consumed": yield_body.get("ledger_tokens_consumed"),
+            "ledger_reduction_percent_local": yield_body.get("ledger_reduction_percent_local"),
+            "reuse_hit_rate": yield_body.get("reuse_hit_rate"),
+            "billed_pairs": yield_body.get("billed_pairs"),
         },
         "spoken": list(SPOKEN),
     }
@@ -303,11 +319,19 @@ def format_run(body: Dict[str, Any]) -> str:
             f"first_reuse={((b2.get('first') or {}).get('reuse'))}  "
             f"second_reuse={((b2.get('second') or {}).get('reuse'))}"
         )
+    yld = body.get("yield") or {}
+    billed = yld.get("billed_pairs") or {}
+    usd = billed.get("total_cost_usd_saved")
+    usd_s = "none" if usd is None else f"{usd}"
     lines.append(
         f"  beat3  source mid ${b3.get('source_mid_usd')}  exclusive mid ${b3.get('exclusive_mid_usd')}  "
         f"hosted=not offered"
     )
-    lines.append("  beat4  AA Index ≠ OS score. Pro 53 > nano 40. Billed implement: keep Pro.")
+    lines.append(
+        f"  beat4  AA Pro 53 > nano 40  ledger_saved={yld.get('ledger_tokens_saved_local')} tok  "
+        f"reduction={yld.get('ledger_reduction_percent_local')}%  "
+        f"billed_pairs={billed.get('paired_tasks')}  Δ${usd_s}  savings_percent=null"
+    )
     lines.append("  say:")
     for beat in body.get("spoken") or SPOKEN:
         lines.append(f"    {beat}")

@@ -81,6 +81,10 @@ def test_demo_run_and_cli(aegis_tmp, tmp_path):
     assert payload["beat2_pack"]["covering_hit"] is True
     assert payload["beat3_price"]["hosted"] is None
     assert payload["beat4_honesty"]["aa_models"][2]["index"] == 53
+    assert payload["savings_percent"] is None
+    assert isinstance(payload["yield"]["ledger_tokens_saved_local"], int)
+    assert payload["beat4_honesty"]["live_yield"]["ledger_tokens_saved_local"] == payload["yield"]["ledger_tokens_saved_local"]
+    assert payload["beat4_honesty"]["routing_authorized"] is False
     assert payload["clock"]["running"] is True
     assert main(["demo", "status"]) == 0
     assert main(["demo", "script"]) == 0

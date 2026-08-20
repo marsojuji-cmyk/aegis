@@ -167,6 +167,8 @@ def test_daemon_spec_kernel_yield(aegis_tmp):
             assert key in data or key in (data.get("yield") or {})
             if path.endswith("/yield"):
                 assert data["yield"]["savings_percent"] is None
+                assert isinstance(data["yield"]["ledger_tokens_saved_local"], int)
+                assert "billed_pairs" in data["yield"]
             if path.endswith("/spec"):
                 assert check_payload("GET /v1/aegis/spec", data)["ok"] is True
             if path.endswith("/kernel"):

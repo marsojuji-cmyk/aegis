@@ -230,7 +230,12 @@ def _release_program_checks() -> List[Check]:
             (
                 "yield_honest",
                 honest,
-                f"savings_percent={yld.get('savings_percent')} admitted={yld.get('admitted_pair')}",
+                (
+                    f"savings_percent={yld.get('savings_percent')} "
+                    f"ledger_saved={yld.get('ledger_tokens_saved_local')} "
+                    f"billed_Δusd={(yld.get('billed_pairs') or {}).get('total_cost_usd_saved')} "
+                    f"admitted={yld.get('admitted_pair')}"
+                ),
             ),
             (
                 "reuse_cue",
