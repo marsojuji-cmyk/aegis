@@ -1,5 +1,7 @@
 # Changelog
 
+- **2026-08-19**: Master hub `~/AEGIS` built (symlinks: repo/data/skills/vault + real `ops/` moved from `Desktop/AGEIS`; workspace file repointed). Repairs: stale `UNKNOWN.egg-info` removed + pip `-e` reinstall (metadata now 1.2.0); 48MB `guard_log.jsonl` rotated to v2 archive + manifest; stale worktrees `t_22e6bdc0`/`t_775b4c14` pruned (merged branches deleted); typo cluster fixed (`Devotes`→`agents`, leading-space ` Grok Build`, `Asistant`→`Assistant`, empty `Memory Utilitie Labs` debris removed); vault `:Ektar` merged into `Ektar/`, empty `Gemini/` removed; Finder tag taxonomy applied (`AEGIS` master + 5 category tags, 12/12 xattr-verified). 383 tests pass; daemon healthy on 1.2.0.
+
 - **2026-08-19**: Path A demo landed + gate deny JSON string. `covering_hit=True` on live rehearsal. Guard log accounting + `scripts/analyze_request_telemetry.py`. 379 tests pass. Buyer name still operator-gated.
 
 - **2026-08-18**: Path A demo CLI (`aegis demo start|run|buyer|status|script`). 14-day buyer clock + four-beat rehearsal. Frozen AA snapshot. No scrape, no routing, no outreach.

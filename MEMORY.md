@@ -4,6 +4,7 @@
 - 1.2.0 agent OS: kernel + portable schema-2 home + frozen `/v1` + yield on 1.1.1 JIT chain.
 - Hermes: normalize → policy → redact → allow|deny|require-review → `~/.aegis/guard_log.jsonl`.
 - `savings_percent` null unless admitted pair. Sprints: `aegis sprint`. Pack-first; `reuse=hit` → no packed_path re-read.
+- Hub: `~/AEGIS` (repo|data|skills|vault symlinks + real `ops/` ex-`Desktop/AGEIS`). Finder tags `AEGIS`+5 category. Map: `~/AEGIS/00-START-HERE.md`.
 
 ## Standing decisions
 - D-011: shadow on. Q-011 open. D-013/D-017: live `aegis-gate`.
