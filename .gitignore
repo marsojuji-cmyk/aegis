@@ -22,3 +22,4 @@ apps/AegisMenu/.build/
 /report-adversarial.json
 /labels.json
 .worktrees/
+docs/book/preview/
