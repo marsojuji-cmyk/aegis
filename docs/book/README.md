@@ -17,3 +17,11 @@ Saved alternate: [`Introducing-AEGIS-draft2-live-type.pdf`](Introducing-AEGIS-dr
 - Cover/fig archive: `docs/assets/pub/aegis-*.png`
 
 Manuscript: [`../PUBLICATION.md`](../PUBLICATION.md).
+
+**Volume II** (system architecture): NASA/GSFC 1970s technical-poster plates — control plane, token capacity basin, guard middleware, Hermes routing. Does not replace Draft 2.
+
+```bash
+python3 docs/book/build_vol2.py
+```
+
+Writes `Introducing-AEGIS-vol2.pdf`. Plates: `docs/assets/pub/vol2/`. Manuscript: [`../PUBLICATION-VOL2.md`](../PUBLICATION-VOL2.md).
