@@ -21,7 +21,7 @@
 - AA + demo: frozen honesty beat. Pro implement baseline. Clock 2026-09-01; buyer **MARCUS RICHARDS** (MUL founder, AEGIS creator).
 - Last ID: D-039 / M-014. Freeze list binds except named graph set. No encoder.
 - Pin: `hermes_notes_root` = AGIS MUL. Shadow on. Auto commit+push on a verified unit.
-- R-014/Q-012: user authorized 2026-08-19. Nous `-z file` probes fail (DSML/XML, tool_call_count=0). Bill via `hermes proxy` when NOUS_API_KEY unset.
+- R-014/Q-012: user authorized 2026-08-19. Nous CLI probes fail (DSML/XML, tool_call_count=0). R012 harness default=agent loop (`scripts/r012_harness.py`). Bill via `hermes proxy` when NOUS_API_KEY unset.
 
 ## Rollback
 - Plugin: `hermes plugins disable aegis-gate`
