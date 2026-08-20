@@ -1,13 +1,17 @@
 # Introducing AEGIS
 
-Memory Utility Labs monograph. 9 × 6 in landscape, 200 dpi, 17 pages.
+Memory Utility Labs monograph. 9 × 6 in landscape, 200 dpi.
 
-Each interior page carries a complementary Pelican/Swiss plate (matte black, white, cyan grid, one focal circle). Cover and Figs. 1–3 remain geodesic laboratory plates.
+**Draft 2** (current build): geodesic laboratory plates — iridescent sphere, teal/magenta schematics, cream Helvetica. Each chapter is an essay page plus a full-bleed figure that matches that chapter. No generator watermarks, no cite tags.
 
 ```bash
 python3 docs/book/build_book.py
 ```
 
-Writes `Introducing-AEGIS.pdf`. Geodesic plates: `docs/assets/pub/`. Pelican plates: `docs/assets/pub/pelican/`. Preview JPEGs under `preview/` are gitignored.
+Writes `Introducing-AEGIS-draft2.pdf`.
 
-Manuscript source: [`../PUBLICATION.md`](../PUBLICATION.md).
+- Draft 2 plates: `docs/assets/pub/draft2/`
+- Draft 1 (Pelican interiors): `Introducing-AEGIS.pdf` + `docs/assets/pub/pelican/`
+- Cover/fig archive: `docs/assets/pub/aegis-*.png`
+
+Manuscript: [`../PUBLICATION.md`](../PUBLICATION.md).

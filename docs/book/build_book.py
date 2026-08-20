@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 ROOT = Path(__file__).resolve().parents[1]
 PLATES = ROOT / "assets" / "pub"
 PELICAN = PLATES / "pelican"
+D2 = PLATES / "draft2"
 OUT = Path(__file__).resolve().parent
 
 DPI = 200
@@ -208,16 +209,45 @@ def plate_page(path: Path, caption: str, rng: random.Random) -> Image.Image:
 
 
 def cover(rng: random.Random) -> Image.Image:
-    return scuff(fit_plate(PLATES / "aegis-hero.png", (W, H)), rng)
+    return scuff(fit_plate(D2 / "d2-cover.png", (W, H)), rng)
+
+
+def essay_page(
+    rng: random.Random,
+    numeral: str,
+    title: str,
+    folio: str,
+    verso: bool,
+    paras: list[str],
+    after=None,
+) -> Image.Image:
+    im = canvas(rng)
+    d = ImageDraw.Draw(im)
+    running(d, verso, folio)
+    y = chapter_head(d, numeral, title)
+    col_w = (W - 2 * MARGIN_X - 48) // 2
+    mid = max(1, (len(paras) + 1) // 2)
+    y2 = draw_paras(d, paras[:mid], MARGIN_X, y, col_w, F_REG(15), CREAM, 22)
+    draw_paras(d, paras[mid:], MARGIN_X + col_w + 48, y, col_w, F_REG(15), CREAM, 22)
+    if after:
+        after(d, MARGIN_X, y2 + 10, col_w)
+    d.line((MARGIN_X, H - 118, W - MARGIN_X, H - 118), fill=RULE, width=1)
+    d.text(
+        (MARGIN_X, H - 100),
+        "No enthusiasm theater.  No soft efficiency lies.  Peer standard.",
+        font=F_OBL(13),
+        fill=CREAM_DIM,
+    )
+    return im
 
 
 def page_half_title(rng: random.Random) -> Image.Image:
-    return scuff(fit_plate(PELICAN / "pelican-halftitle.png", (W, H)), rng)
+    return scuff(fit_plate(D2 / "d2-colophon.png", (W, H)), rng)
 
 
 def page_title(rng: random.Random) -> Image.Image:
     im = canvas(rng)
-    tx, tw = paste_complement(im, PELICAN / "pelican-halftitle.png", verso=False)
+    tx, tw = paste_complement(im, D2 / "d2-cover.png", verso=False)
     d = ImageDraw.Draw(im)
     d.text((tx, 90), "a Memory Utility Publication", font=F_LIGHT(16), fill=TEAL)
     d.text((tx, 140), "Introducing", font=F_REG(26), fill=CREAM)
@@ -241,7 +271,7 @@ def page_title(rng: random.Random) -> Image.Image:
 
 def page_contents(rng: random.Random) -> Image.Image:
     im = canvas(rng)
-    tx, tw = paste_complement(im, PELICAN / "pelican-contents.png", verso=True)
+    tx, tw = paste_complement(im, D2 / "d2-contents.png", verso=True)
     d = ImageDraw.Draw(im)
     running(d, True, "", tx, tw)
     y = chapter_head(d, "CONTENTS", "This volume", 70, tx)
@@ -250,17 +280,19 @@ def page_contents(rng: random.Random) -> Image.Image:
         ("ii", "Title"),
         ("iii", "Contents"),
         ("1", "I.   The operating system"),
-        ("2", "II.  Token basin"),
-        ("3", "     Fig. 1  —  basin plate"),
-        ("4", "III. Core loop"),
-        ("5", "     Fig. 2  —  loop plate"),
-        ("6", "IV.  Reserve floor"),
-        ("7", "     Fig. 3  —  80% plate"),
-        ("8", "V.   Honest yield"),
-        ("9", "VI.  Install"),
-        ("10", "VII. Data plane"),
-        ("11", "VIII. Field card"),
-        ("12", "Colophon"),
+        ("2", "     kernel / process / memory / syscalls"),
+        ("3", "II.  Token basin"),
+        ("4", "     INPUT / STORAGE / RETRIEVAL"),
+        ("5", "III. Core loop"),
+        ("6", "     PACK / REUSE / LAND / LEDGER"),
+        ("7", "IV.  Reserve floor"),
+        ("8", "     80% · OPEN / THROTTLE / HARD STOP"),
+        ("9", "V.   Honest yield"),
+        ("10", "     savings_percent : null"),
+        ("11", "VI.  Install"),
+        ("12", "VII. Data plane"),
+        ("13", "VIII. Field card"),
+        ("14", "Colophon"),
     ]
     f_num, f_item = F_LIGHT(14), F_REG(15)
     yy = y
@@ -308,7 +340,7 @@ def page_os(rng: random.Random) -> Image.Image:
         "The naive path is a single-purpose dam. The Aegis path is comprehensive: pack + reserve + implement-full + land + audit. The difference is never hidden.",
         "Silence over noise. Micro-turns over dumps. Compound yield over cleverness.",
     ]
-    return text_page(rng, "CHAPTER I", "The operating system", "1", True, paras, PELICAN / "pelican-os.png")
+    return essay_page(rng, "CHAPTER I", "The operating system", "1", True, paras)
 
 
 def page_basin(rng: random.Random) -> Image.Image:
@@ -318,7 +350,7 @@ def page_basin(rng: random.Random) -> Image.Image:
         "Naive: dump → overflow → re-read. Aegis: pack + reserve + implement-full + land + audit.",
         "The work-system is one basin. Chat windows are jurisdictions, not units. Covering reuse hits if hashes still match. After you edit, the cache misses on purpose.",
     ]
-    return text_page(rng, "CHAPTER II", "Token basin", "2", False, paras, PELICAN / "pelican-basin.png")
+    return essay_page(rng, "CHAPTER II", "Token basin", "3", False, paras)
 
 
 def page_loop(rng: random.Random) -> Image.Image:
@@ -329,7 +361,7 @@ def page_loop(rng: random.Random) -> Image.Image:
         "LAND. aegis land shrinks the final, stores it, indexes it. LEDGER. ~/.aegis/ledger.jsonl is source of truth. If it is not in the ledger, it did not happen.",
         "Gates fail closed on unknown, malformed, or out-of-scope requests. When reserve is cold: tools and reuse only; invest frozen.",
     ]
-    return text_page(rng, "CHAPTER III", "Core loop", "4", False, paras, PELICAN / "pelican-loop.png")
+    return essay_page(rng, "CHAPTER III", "Core loop", "5", False, paras)
 
 
 def draw_state_table(d: ImageDraw.ImageDraw, x: int, y: int, width: int) -> int:
@@ -367,9 +399,7 @@ def page_reserve(rng: random.Random) -> Image.Image:
     def table(d, x, y, w):
         draw_state_table(d, x, y, w)
 
-    return text_page(
-        rng, "CHAPTER IV", "Reserve floor", "6", False, paras, PELICAN / "pelican-reserve.png", after=table
-    )
+    return essay_page(rng, "CHAPTER IV", "Reserve floor", "7", False, paras, after=table)
 
 
 def page_yield(rng: random.Random) -> Image.Image:
@@ -379,143 +409,66 @@ def page_yield(rng: random.Random) -> Image.Image:
         "The system names its own drift, missing evidence, and false savings first. That is the difference between a dashboard and a ledger. One flatters. The other holds.",
         "ROI is felt before calculated. Prefer the path that leaves greatest surplus with full signal. Friction is enemy. User intent is sacred inventory.",
     ]
-    return text_page(rng, "CHAPTER V", "Honest yield", "8", False, paras, PELICAN / "pelican-yield.png")
+    return essay_page(rng, "CHAPTER V", "Honest yield", "9", False, paras)
 
 
 def page_install(rng: random.Random) -> Image.Image:
-    im = canvas(rng)
-    tx, tw = paste_complement(im, PELICAN / "pelican-install.png", verso=True)
-    d = ImageDraw.Draw(im)
-    running(d, True, "9", tx, tw)
-    y = chapter_head(d, "CHAPTER VI", "Install", 70, tx)
-    y = draw_paras(
-        d,
-        [
-            "Any machine. This-host extras (Cursor / Hermes / AGIS) remain optional. They are not required for doctor --product.",
-            "Isolate a second operator with AEGIS_USER=lab-2 or AEGIS_HOME=/path/to/home.",
-        ],
-        tx,
-        y,
-        tw,
-        F_REG(14),
-        CREAM,
-        20,
-    )
-    cmds = [
+    paras = [
+        "Any machine. This-host extras (Cursor / Hermes / AGIS) remain optional. They are not required for doctor --product.",
+        "Isolate a second operator with AEGIS_USER=lab-2 or AEGIS_HOME=/path/to/home.",
         "python3 -m pip install --user -e .",
-        "python3 -m aegis os init",
-        "python3 -m aegis doctor --product",
-        "python3 -m aegis os ready",
-        "python3 -m aegis os score",
+        "python3 -m aegis os init && python3 -m aegis doctor --product",
+        "python3 -m aegis os ready && python3 -m aegis os score",
         "aegis pack --mode implement path.py",
-        "aegis land --body-file final.txt --summary \"…\"",
-        "aegis budget | surplus | yield report",
+        "aegis land --body-file final.txt --summary \"what shipped\"",
+        "Reduce · reuse · recycle. The window will close. The basin remains.",
     ]
-    y += 10
-    d.rectangle((tx, y, tx + tw, y + 22 * len(cmds) + 16), outline=TEAL, width=1)
-    d.rectangle((tx, y, tx + 4, y + 22 * len(cmds) + 16), fill=TEAL)
-    yy = y + 8
-    for line in cmds:
-        d.text((tx + 14, yy), line, font=F_MONO(11), fill=CREAM)
-        yy += 22
-    d.text((tx, H - 100), "Reduce · reuse · recycle.", font=F_BOLD(13), fill=TEAL)
-    d.text((tx, H - 78), "The window will close. The basin remains.", font=F_OBL(13), fill=CREAM_DIM)
-    return im
+    return essay_page(rng, "CHAPTER VI", "Install", "11", True, paras)
 
 
 def page_data(rng: random.Random) -> Image.Image:
-    im = canvas(rng)
-    tx, tw = paste_complement(im, PELICAN / "pelican-data.png", verso=False)
-    d = ImageDraw.Draw(im)
-    running(d, False, "10", tx, tw)
-    y = chapter_head(d, "CHAPTER VII", "Data plane & policy", 70, tx)
-    rows = [
-        ("ledger.jsonl", "token economics"),
-        ("packs/", "content-addressed packs"),
-        ("outputs/", "slim finals index"),
-        ("fund.json", "surplus → ROI backlog"),
-        ("sprints.jsonl", "sprint ledger"),
-        ("kernel/", "process table"),
-        ("config.toml", "cap / reserve / reinvest"),
+    paras = [
+        "Data plane lives under ~/.aegis/. ledger.jsonl is all token economics. packs/ are content-addressed context. outputs/ is the slim finals index.",
+        "fund.json and ideas.jsonl are surplus → ROI backlog. sprints.jsonl is the sprint ledger. kernel/ is the process table. config.toml holds cap, reserve floor, reinvest rate.",
+        "Weekly cap: 1 000 000 processed tokens. Reserve floor: 80%. Reinvest: 20% of new savings → wish jar.",
+        "Pack cache: covering path-set + file hashes. Task does not bust reuse. Edits do. Languages: Python/JS/TS first-class; else scrub-only (implement = full file).",
     ]
-    d.text((tx, y), "~/.aegis/", font=F_MONO_B(12), fill=TEAL)
-    y += 26
-    for a, b in rows:
-        d.text((tx, y), a, font=F_MONO(11), fill=CREAM)
-        d.text((tx + 200, y), b, font=F_REG(12), fill=CREAM_DIM)
-        y += 24
-        d.line((tx, y - 6, tx + tw, y - 6), fill=RULE, width=1)
-    y += 10
-    draw_paras(
-        d,
-        [
-            "Weekly cap: 1 000 000. Reserve floor: 80%. Reinvest: 20% → wish jar.",
-            "Pack cache: covering path-set + hashes. Task does not bust reuse. Edits do.",
-        ],
-        tx,
-        y,
-        tw,
-        F_REG(13),
-        CREAM,
-        20,
-    )
-    return im
+    return essay_page(rng, "CHAPTER VII", "Data plane & policy", "13", False, paras)
 
 
 def page_field(rng: random.Random) -> Image.Image:
-    im = canvas(rng)
-    tx, tw = paste_complement(im, PELICAN / "pelican-field.png", verso=True)
-    d = ImageDraw.Draw(im)
-    running(d, True, "11", tx, tw)
-    y = chapter_head(d, "CHAPTER VIII", "Field card", 70, tx)
-    laws = [
-        "Tokens = finite inventory. Waste = failure.",
-        "Naive vs Aegis — show both; hide nothing.",
-        "Friction is enemy. Reject clever that adds load.",
-        "Hold: raw vs scrubbed · reuse · reserve · surplus.",
-        "Code = shared ledger. Smallest patch. No fat growth.",
-        "No enthusiasm theater. No soft efficiency lies.",
-        "Output: diffs / micro-JSON / brief truth.",
-        "Prefer aegis pack|scrub|budget over re-reading trees.",
-        "Explore = signatures; implement = full bodies.",
-        "Reserve cold: tools + reuse only; invest frozen.",
+    paras = [
+        "01  Tokens = finite inventory. Waste = failure. Feel excess context; cut it.",
+        "02  Naive path vs Aegis path — show both when it matters; hide nothing.",
+        "03  Friction is enemy. Reject clever that adds load, rework, or brittleness.",
+        "04  Hold: raw vs scrubbed · reuse · reserve (≥80%) · surplus.",
+        "05  Code = shared ledger. Name drift early. Smallest corrective patch.",
+        "06  No enthusiasm theater. No soft efficiency lies. Peer standard.",
+        "07  Output: diffs / micro-JSON / brief truth. No preamble.",
+        "08  Prefer aegis pack | scrub | budget | surplus over re-reading whole trees.",
+        "09  Explore = signatures; implement = full target bodies.",
+        "10  When reserve cold: tools + reuse only; invest frozen.",
     ]
-    for i, law in enumerate(laws):
-        d.text((tx, y), f"{i + 1:02d}", font=F_BOLD(13), fill=TEAL)
-        d.text((tx + 36, y), law, font=F_REG(13), fill=CREAM)
-        y += 36
-    return im
+    return essay_page(rng, "CHAPTER VIII", "Field card", "15", True, paras)
 
 
 def page_colophon(rng: random.Random) -> Image.Image:
-    im = canvas(rng)
-    tx, tw = paste_complement(im, PELICAN / "pelican-colophon.png", verso=False)
-    d = ImageDraw.Draw(im)
-    running(d, False, "12", tx, tw)
-    y = chapter_head(d, "COLOPHON", "Memory Utility Labs", 70, tx)
-    draw_paras(
-        d,
-        [
-            "Designed as a Golden Gate Book for Memory Utility Labs, Calgary, Alberta.",
-            "Complementary plates follow Pelican / Swiss grid language: matte black, white, cyan, nested squares, one focal circle.",
-            "Figure plates (cover, basin, loop, reserve) remain the laboratory geodesic style.",
-            "Type: Helvetica and Menlo. Format: 9 × 6 in landscape, 200 dpi.",
-            "Manuscript from Aegis 1.2.0: FIELD.md, ABSOLUTE.md, README. savings_percent remains null without an admitted pair.",
-            "Remain in Absolute Form unless explicitly released.",
-        ],
-        tx,
-        y,
-        tw,
-        F_REG(14),
-        CREAM,
-        21,
-    )
-    d.text((tx, H - 92), "MUL  ·  ISSUE 17  ·  VOL. I", font=F_BOLD(12), fill=TEAL)
-    return im
+    paras = [
+        "Designed as a Golden Gate Book for Memory Utility Labs, Calgary, Alberta.",
+        "Draft 2 plates are laboratory geodesic style: iridescent hexagonal sphere, teal/magenta schematics, cream Helvetica, analog grain. No generator watermarks. No cite tags.",
+        "Type: Helvetica and Menlo. Format: 9 × 6 in landscape, 200 dpi.",
+        "Manuscript from Aegis 1.2.0: FIELD.md, ABSOLUTE.md, README. savings_percent remains null without an admitted pair.",
+        "Remain in Absolute Form unless explicitly released.",
+    ]
+    return essay_page(rng, "COLOPHON", "Memory Utility Labs", "17", False, paras)
 
 
 def page_back(rng: random.Random) -> Image.Image:
-    return scuff(letterbox_plate(PELICAN / "pelican-back.png", (W, H)), rng)
+    return scuff(fit_plate(D2 / "d2-back.png", (W, H)), rng)
+
+
+def fig(name: str, caption: str, rng: random.Random) -> Image.Image:
+    return plate_page(D2 / name, caption, rng)
 
 
 def build() -> Path:
@@ -526,32 +479,38 @@ def build() -> Path:
         page_title(rng),
         page_contents(rng),
         page_os(rng),
+        fig("d2-os.png", "FIG. 1   THE OPERATING SYSTEM  —  PROCESS / MEMORY / DRIVERS / SYSCALLS", rng),
         page_basin(rng),
-        plate_page(PLATES / "aegis-basin.png", "FIG. 1   TOKEN BASIN  —  INPUT / STORAGE / STATE MACHINE / RETRIEVAL", rng),
+        fig("d2-basin.png", "FIG. 2   TOKEN BASIN  —  INPUT / STORAGE / STATE MACHINE / RETRIEVAL", rng),
         page_loop(rng),
-        plate_page(PLATES / "aegis-loop.png", "FIG. 2   CORE LOOP  —  PACK / REUSE / LAND / LEDGER", rng),
+        fig("d2-loop.png", "FIG. 3   CORE LOOP  —  PACK / REUSE / LAND / LEDGER", rng),
         page_reserve(rng),
-        plate_page(PLATES / "aegis-reserve.png", "FIG. 3   RESERVE FLOOR  —  80%  ·  CAP 1 000 000 PROCESSED TOKENS / WEEK", rng),
+        fig("d2-reserve.png", "FIG. 4   RESERVE FLOOR  —  80%  ·  OPEN / THROTTLE / HARD STOP", rng),
         page_yield(rng),
+        fig("d2-yield.png", "FIG. 5   HONEST YIELD  —  savings_percent : null UNTIL ADMITTED PAIR", rng),
         page_install(rng),
+        fig("d2-install.png", "FIG. 6   INSTALL  —  os init / doctor / ready", rng),
         page_data(rng),
+        fig("d2-data.png", "FIG. 7   DATA PLANE  —  ~/.aegis/  ledger · packs · outputs · kernel", rng),
         page_field(rng),
+        fig("d2-field.png", "FIG. 8   FIELD CARD  —  TEN LAWS", rng),
         page_colophon(rng),
+        fig("d2-colophon.png", "COLOPHON  —  MEMORY UTILITY LABS / CALGARY, ALBERTA", rng),
         page_back(rng),
     ]
-    out = OUT / "Introducing-AEGIS.pdf"
+    out = OUT / "Introducing-AEGIS-draft2.pdf"
     pages[0].save(
         out,
         "PDF",
         save_all=True,
         append_images=pages[1:],
         resolution=DPI,
-        title="Introducing AEGIS",
+        title="Introducing AEGIS (Draft 2)",
         author="Memory Utility Labs / Calgary, Alberta",
         creator="Aegis monograph typesetter",
-        subject="A Memory Utility Publication · Technical Specifications, Vol. I",
+        subject="A Memory Utility Publication · Technical Specifications, Vol. I · Draft 2",
     )
-    preview = OUT / "preview"
+    preview = OUT / "preview-draft2"
     preview.mkdir(exist_ok=True)
     for i, p in enumerate(pages):
         thumb = p.copy()
@@ -563,3 +522,6 @@ def build() -> Path:
 if __name__ == "__main__":
     path = build()
     print(f"wrote {path} ({path.stat().st_size} bytes)")
+
+
+
