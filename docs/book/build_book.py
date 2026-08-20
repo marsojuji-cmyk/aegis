@@ -167,12 +167,17 @@ def chapter_head(d: ImageDraw.ImageDraw, numeral: str, title: str, y: int = 78, 
     return y + 90
 
 
-def paste_complement(im: Image.Image, path: Path, verso: bool) -> tuple[int, int]:
-    """Plate on the outer edge, 3:4, full height. Returns (text_x, text_w)."""
+def paste_complement(im: Image.Image, path: Path, verso: bool, crop: bool = False) -> tuple[int, int]:
+    """Plate on the outer edge. crop=False letterboxes so labels never clip."""
     src = Image.open(path).convert("RGB")
     pw = int(round(H * 3 / 4))
-    fitted = ImageOps.fit(src, (pw, H), Image.Resampling.LANCZOS)
-    im.paste(fitted, (0 if verso else W - pw, 0))
+    if crop:
+        panel = ImageOps.fit(src, (pw, H), Image.Resampling.LANCZOS)
+    else:
+        panel = Image.new("RGB", (pw, H), CHARCOAL)
+        contained = ImageOps.contain(src, (pw, H), Image.Resampling.LANCZOS)
+        panel.paste(contained, ((pw - contained.width) // 2, (H - contained.height) // 2))
+    im.paste(panel, (0 if verso else W - pw, 0))
     if verso:
         tx = pw + 40
         tw = W - tx - MARGIN_X
@@ -242,12 +247,12 @@ def essay_page(
 
 
 def page_half_title(rng: random.Random) -> Image.Image:
-    return scuff(fit_plate(D2 / "d2-colophon.png", (W, H)), rng)
+    return scuff(fit_plate(D2 / "d2-intro.png", (W, H)), rng)
 
 
 def page_title(rng: random.Random) -> Image.Image:
     im = canvas(rng)
-    tx, tw = paste_complement(im, D2 / "d2-cover.png", verso=False)
+    tx, tw = paste_complement(im, D2 / "d2-intro.png", verso=False, crop=True)
     d = ImageDraw.Draw(im)
     d.text((tx, 90), "a Memory Utility Publication", font=F_LIGHT(16), fill=TEAL)
     d.text((tx, 140), "Introducing", font=F_REG(26), fill=CREAM)
@@ -256,7 +261,7 @@ def page_title(rng: random.Random) -> Image.Image:
     d.text((tx, 296), "Memory Utility Labs", font=F_BOLD(20), fill=CREAM)
     d.text((tx, 326), "Calgary, Alberta", font=F_REG(16), fill=CREAM_DIM)
     d.text((tx, 380), "TECHNICAL SPECIFICATIONS, VOL. I", font=F_REG(13), fill=TEAL)
-    d.text((tx, 408), "Product 1.2.0  ·  Issue 17  ·  2026", font=F_LIGHT(13), fill=CREAM_DIM)
+    d.text((tx, 408), "Product 1.2.0  ·  Issue 1  ·  2026", font=F_LIGHT(13), fill=CREAM_DIM)
     col = [
         "Agent operating system for AI coding work.",
         "Kernel · portable data plane · frozen /v1 API · honest yield proof.",
@@ -271,10 +276,9 @@ def page_title(rng: random.Random) -> Image.Image:
 
 def page_contents(rng: random.Random) -> Image.Image:
     im = canvas(rng)
-    tx, tw = paste_complement(im, D2 / "d2-contents.png", verso=True)
     d = ImageDraw.Draw(im)
-    running(d, True, "", tx, tw)
-    y = chapter_head(d, "CONTENTS", "This volume", 70, tx)
+    running(d, False, "")
+    y = chapter_head(d, "CONTENTS", "This volume", 70)
     items = [
         ("i", "Half title"),
         ("ii", "Title"),
@@ -294,12 +298,25 @@ def page_contents(rng: random.Random) -> Image.Image:
         ("13", "VIII. Field card"),
         ("14", "Colophon"),
     ]
-    f_num, f_item = F_LIGHT(14), F_REG(15)
-    yy = y
-    for num, title in items:
-        d.text((tx, yy), num, font=f_num, fill=TEAL)
-        d.text((tx + 48, yy), title, font=f_item, fill=CREAM)
-        yy += 32
+    left, right = items[:9], items[9:]
+    f_num, f_item = F_LIGHT(14), F_REG(16)
+
+    def col(entries, x):
+        yy = y
+        for num, title in entries:
+            d.text((x, yy), num, font=f_num, fill=TEAL)
+            d.text((x + 48, yy), title, font=f_item, fill=CREAM)
+            yy += 36
+
+    col(left, MARGIN_X)
+    col(right, W // 2 + 20)
+    d.line((MARGIN_X, H - 100, W - MARGIN_X, H - 100), fill=RULE, width=1)
+    d.text(
+        (MARGIN_X, H - 88),
+        "Issue 1.  Where a number is not yet proven, the number stays null.",
+        font=F_OBL(14),
+        fill=CREAM_DIM,
+    )
     return im
 
 
@@ -478,6 +495,7 @@ def build() -> Path:
         page_half_title(rng),
         page_title(rng),
         page_contents(rng),
+        fig("d2-contents.png", "THIS VOLUME  —  OS · BASIN · LOOP · RESERVE · YIELD · INSTALL · DATA · FIELD", rng),
         page_os(rng),
         fig("d2-os.png", "FIG. 1   THE OPERATING SYSTEM  —  PROCESS / MEMORY / DRIVERS / SYSCALLS", rng),
         page_basin(rng),
