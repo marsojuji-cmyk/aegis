@@ -56,7 +56,23 @@ Surplus is not decoration. Twenty percent of new savings flows to the wish jar â
 
 ## Honest yield
 
-The hardest rule in the doctrine is the simplest: **no soft efficiency lies.** Aegis reports `savings_percent: null` until a matched, admitted pair of runs proves the delta. Advertised tool-call metadata is not admission. Estimates are labeled estimates. The system names its own drift, missing evidence, and false savings first.
+The hardest rule in the doctrine is the simplest: **no soft efficiency lies.** Honesty yield prints the live ledger and billed-pair numbers. It does not mint `savings_percent`. It does not turn routing on.
+
+Ledger tokens are local `chars/4` counterfactual. Billed USD is provider-observed. Demo beat 4 and `doctor yield_honest` show the same figures instead of blanking them. Advertised tool-call metadata is not admission. A research note that a pair set is eligible for a routing trial is not authorization.
+
+Live report on this machine (`aegis yield report`):
+
+| Field | Value |
+|---|---|
+| ledger saved | 1,033,699 tok |
+| consumed | 2,320,861 tok |
+| reduction | 30.8% (chars/4 local) |
+| billed pairs | 20 / 20 cost-complete |
+| baseline mean | $0.00005 |
+| governed mean | $0.000029 |
+| billed Î” | $0.000414 |
+| savings_percent | null |
+| routing | off |
 
 That is the difference between a dashboard and a ledger. One flatters. The other holds.
 

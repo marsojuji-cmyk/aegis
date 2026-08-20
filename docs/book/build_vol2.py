@@ -104,7 +104,7 @@ def page_title(rng: random.Random) -> Image.Image:
     col = [
         "Volume I stated the law. This volume states the machinery.",
         "Control plane. Token capacity basin. Guard middleware. Hermes routing.",
-        "Product routing stays off. savings_percent stays null.",
+        "Honesty yield prints ledger and billed-pair numbers. savings_percent stays null. Product routing stays off.",
         "Absolute Form: austere · aggressive on drift · protective reserve (>=80%).",
     ]
     v1.draw_paras(d, col, tx, 500, tw, F_REG(15), CREAM, 22)
@@ -198,7 +198,7 @@ def page_colophon(rng: random.Random) -> Image.Image:
         "Designed as a Golden Gate Book for Memory Utility Labs, Calgary, Alberta.",
         "Volume II plates follow 1970s NASA / GSFC technical-poster language: charcoal ground, cream Helvetica, muted teal / brick / mustard, drafting marks, analog grain. Chapter figures are the four system posters.",
         "Type: Helvetica. Format: 9 x 6 in landscape, 200 dpi. Product 1.2.0. Issue 1. 2026.",
-        "Manuscript from FIELD.md, FIRST_RELEASE.md, guard and Hermes wrapper. routing_authorized remains false. savings_percent remains null without an admitted pair.",
+        "Manuscript from FIELD.md, FIRST_RELEASE.md, guard and Hermes wrapper. Honesty yield prints measured ledger and billed-pair numbers. routing_authorized remains false. savings_percent remains null.",
         "Remain in Absolute Form unless explicitly released.",
     ]
     return essay_page(rng, "COLOPHON", "Memory Utility Labs", "9", True, paras)

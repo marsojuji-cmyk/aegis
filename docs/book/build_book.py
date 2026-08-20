@@ -302,7 +302,7 @@ def page_contents(rng: random.Random) -> Image.Image:
         ("7", "IV.  Reserve floor"),
         ("8", "     80% · OPEN / THROTTLE / HARD STOP"),
         ("9", "V.   Honest yield"),
-        ("10", "     savings_percent : null"),
+        ("10", "     ledger + billed pairs · savings_percent : null"),
         ("11", "VI.  Install"),
         ("12", "VII. Data plane"),
         ("13", "VIII. Field card"),
@@ -429,14 +429,81 @@ def page_reserve(rng: random.Random) -> Image.Image:
     return essay_page(rng, "CHAPTER IV", "Reserve floor", "7", False, paras, after=table)
 
 
-def page_yield(rng: random.Random) -> Image.Image:
-    paras = [
-        "The hardest rule in the doctrine is the simplest: no soft efficiency lies.",
-        "Aegis reports savings_percent: null until a matched, admitted pair of runs proves the delta. Advertised tool-call metadata is not admission. Estimates are labeled estimates.",
-        "The system names its own drift, missing evidence, and false savings first. That is the difference between a dashboard and a ledger. One flatters. The other holds.",
-        "ROI is felt before calculated. Prefer the path that leaves greatest surplus with full signal. Friction is enemy. User intent is sacred inventory.",
+def _usd(value) -> str:
+    if value is None:
+        return "null"
+    text = f"{float(value):.6f}".rstrip("0").rstrip(".")
+    if "." not in text:
+        text += ".0"
+    return f"${text}"
+
+
+def live_yield_rows() -> list[tuple[str, str]]:
+    """Press-time yield_report(). Never mint savings_percent. Never authorize routing."""
+    y: dict = {}
+    try:
+        from aegis.yield_proof import yield_report
+
+        y = yield_report() or {}
+    except Exception:  # noqa: BLE001
+        y = {}
+    billed = y.get("billed_pairs") or {}
+    saved = int(y.get("ledger_tokens_saved_local") or 0)
+    consumed = int(y.get("ledger_tokens_consumed") or 0)
+    reduction = y.get("ledger_reduction_percent_local")
+    pairs = int(billed.get("paired_tasks") or 0)
+    observed = int(billed.get("observed_cost_pairs") or 0)
+    complete = " cost-complete" if billed.get("cost_comparison_complete") else ""
+    return [
+        ("FIELD", "VALUE"),
+        ("ledger saved", f"{saved:,} tok"),
+        ("consumed", f"{consumed:,} tok"),
+        ("reduction", f"{0.0 if reduction is None else float(reduction):.1f}%  (chars/4 local)"),
+        ("billed pairs", f"{pairs} / {observed}{complete}"),
+        ("baseline mean", _usd(billed.get("baseline_mean_usd"))),
+        ("governed mean", _usd(billed.get("governed_mean_usd"))),
+        ("billed delta", _usd(billed.get("total_cost_usd_saved"))),
+        ("savings_percent", "null"),
+        ("routing", "off"),
     ]
-    return essay_page(rng, "CHAPTER V", "Honest yield", "9", False, paras)
+
+
+def draw_yield_table(d: ImageDraw.ImageDraw, x: int, y: int, width: int) -> int:
+    rows = live_yield_rows()
+    col0 = 220
+    row_h = 26
+    for i, (field, value) in enumerate(rows):
+        yy = y + i * row_h
+        f = F_BOLD(12) if i == 0 else F_REG(12)
+        fill = TEAL if i == 0 else CREAM
+        if i == 0:
+            d.rectangle((x, yy, x + width, yy + row_h), outline=RULE)
+        else:
+            d.line((x, yy + row_h, x + width, yy + row_h), fill=RULE, width=1)
+        d.text((x + 8, yy + 5), field, font=f, fill=fill)
+        d.text((x + col0, yy + 5), value, font=f, fill=fill)
+    return y + len(rows) * row_h + 8
+
+
+def page_yield(rng: random.Random) -> Image.Image:
+    im = canvas(rng)
+    d = ImageDraw.Draw(im)
+    running(d, False, "9")
+    y = chapter_head(d, "CHAPTER V", "Honest yield")
+    paras = [
+        "The hardest rule in the doctrine is the simplest: no soft efficiency lies. Honesty yield prints the live ledger and billed-pair numbers. It does not mint savings_percent. It does not turn routing on.",
+        "Ledger tokens are local chars/4 counterfactual. Billed USD is provider-observed. Demo beat 4 and doctor yield_honest show the same figures instead of blanking them. Advertised tool-call metadata is not admission. A research note that a pair set is eligible for a routing trial is not authorization.",
+    ]
+    y = draw_paras(d, paras, MARGIN_X, y, W - 2 * MARGIN_X, F_REG(15), CREAM, 22, max_y=H - 420)
+    y = draw_yield_table(d, MARGIN_X, y + 18, W - 2 * MARGIN_X)
+    d.line((MARGIN_X, H - 118, W - MARGIN_X, H - 118), fill=RULE, width=1)
+    d.text(
+        (MARGIN_X, H - 100),
+        "No enthusiasm theater.  No soft efficiency lies.  Peer standard.",
+        font=F_OBL(13),
+        fill=CREAM_DIM,
+    )
+    return im
 
 
 def page_install(rng: random.Random) -> Image.Image:
@@ -484,7 +551,7 @@ def page_colophon(rng: random.Random) -> Image.Image:
         "Designed as a Golden Gate Book for Memory Utility Labs, Calgary, Alberta.",
         "Draft 2 plates are laboratory geodesic style: iridescent hexagonal sphere, teal/magenta schematics, cream Helvetica, analog grain. No generator watermarks. No cite tags.",
         "Type: Helvetica and Menlo. Format: 9 × 6 in landscape, 200 dpi.",
-        "Manuscript from Aegis 1.2.0: FIELD.md, ABSOLUTE.md, README. savings_percent remains null without an admitted pair.",
+        "Manuscript from Aegis 1.2.0: FIELD.md, ABSOLUTE.md, README. Honesty yield prints live ledger and billed-pair numbers. savings_percent remains null. Routing remains off.",
         "Remain in Absolute Form unless explicitly released.",
     ]
     return essay_page(rng, "COLOPHON", "Memory Utility Labs", "17", False, paras)
@@ -515,7 +582,7 @@ def build() -> Path:
         page_reserve(rng),
         fig("d2-reserve.png", "FIG. 4   RESERVE FLOOR  —  80%  ·  OPEN / THROTTLE / HARD STOP", rng),
         page_yield(rng),
-        fig("d2-yield.png", "FIG. 5   HONEST YIELD  —  savings_percent : null UNTIL ADMITTED PAIR", rng),
+        fig("d2-yield.png", "FIG. 5   HONEST YIELD  —  LEDGER + BILLED PAIRS  ·  savings_percent : null", rng),
         page_install(rng),
         fig("d2-install.png", "FIG. 6   INSTALL  —  os init / doctor / ready", rng),
         page_data(rng),

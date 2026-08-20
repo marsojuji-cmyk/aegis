@@ -45,7 +45,7 @@ Ledger: `~/.aegis/guard_log.jsonl`. Rotate: `aegis guard rotate`. Hermes wrapper
 
 `aegis hermes search|resolve` is a thin read-only CLI over the local index. Track first. Perplexity only for a live external miss. Perplexity never edits.
 
-Coordination pathways are drawn. Product routing is not authorized. `routing_authorized` stays false. `savings_percent` stays null until a matched, admitted pair of runs proves the delta. Advertised tool-call metadata is not admission. A research note is not a routing trial.
+Coordination pathways are drawn. Product routing is not authorized. `routing_authorized` stays false. Honesty yield prints measured ledger and billed-pair numbers; `savings_percent` stays null. Advertised tool-call metadata is not admission. A research note is not a routing trial.
 
 The index is a marshal. It is not a switch.
 

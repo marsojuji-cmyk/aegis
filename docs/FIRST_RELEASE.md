@@ -59,7 +59,7 @@ This file is the product boundary. Later install, API, docs, and acceptance work
 7. Auto-tick
 8. Parallel fan-out while reserve signal is `throttle`
 9. Encoder (Q-013 locked-observe)
-10. `savings_percent` claims (ledger “saved” tokens are local counterfactual only)
+10. `savings_percent` claims (ledger saved tokens and billed-pair USD print as measured; they stay labeled counterfactual / observed and do not mint `savings_percent` or authorize routing)
 11. Hosted / cloud processing
 12. Consumer marketplace / SaaS tenancy
 13. Host kernel / drivers / process isolation of the machine OS
