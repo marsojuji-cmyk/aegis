@@ -30,6 +30,8 @@ def test_quote_is_honest_and_sellable(aegis_tmp):
     assert src["low"] < src["mid"] < src["high"]
     assert q["token_demo"]["savings_percent"] is None
     assert q["value_delta"]["sellable_now"] is True
+    assert q["post_stack_governance"]["usd"] == 10000
+    assert q["post_stack_governance"]["continuity_bench"]["cases"] == 6
 
 
 def test_cli_price_quote(aegis_tmp):

@@ -36,6 +36,44 @@ REPLACEMENT_HOURS = 400
 REPLACEMENT_RATE_USD = 250
 REUSE_TARGET_PCT = 50.0
 
+# Publication-series governance stack (memory_admit, agency, relay, sentinel, mesh).
+# Applied when modules are present. Not token-bill USD.
+POST_STACK_GOVERNANCE_USD = 10000
+POST_STACK_SHIPPED = (
+    "2026-08-21 publication-series stack: memory_admit, agency, relay, "
+    "sentinel capsule, memory mesh tiers"
+)
+POST_STACK_BENCH = {
+    "suite": "continuity-assurance-ab",
+    "cases": 6,
+    "baseline_pass_rate": 0.0,
+    "governed_pass_rate": 1.0,
+    "handoff_failures_delta": -6,
+    "unsupported_recalls_delta": -9,
+    "relay_linked_cases_delta": 6,
+    "note": "Offline MUL fixture scorer; not live LLM recall or billed USD.",
+}
+
+
+def _post_stack_premium() -> Dict[str, Any]:
+    required = ("memory_admit", "agency", "relay")
+    present: List[str] = []
+    for name in required:
+        try:
+            __import__(f"aegis.{name}")
+            present.append(name)
+        except ImportError:
+            pass
+    active = len(present) == len(required)
+    usd = POST_STACK_GOVERNANCE_USD if active else 0
+    return {
+        "usd": usd,
+        "modules": present,
+        "shipped": POST_STACK_SHIPPED if active else None,
+        "continuity_bench": dict(POST_STACK_BENCH) if active else None,
+        "note": "Governance completeness premium. Does not change savings_percent.",
+    }
+
 # Observed Nous/xiaomi pairs from authorized health runs. Estimated USD. Not admitted.
 OBSERVED_PAIRS: List[Dict[str, Any]] = [
     {
@@ -84,7 +122,10 @@ def quote() -> Dict[str, Any]:
     premium = 40000.0 * completeness
     yield_haircut = 15000.0 * ((10.0 - float((card.get("layers") or {}).get("proven_yield", {}).get("score") or 8)) / 10.0)
     reuse_haircut = 10000.0 * max(0.0, (REUSE_TARGET_PCT - reuse) / REUSE_TARGET_PCT)
-    exclusive_mid = _round_money(THEN["exclusive_usd"]["low"] + premium - yield_haircut - reuse_haircut)
+    post_stack = _post_stack_premium()
+    exclusive_mid = _round_money(
+        THEN["exclusive_usd"]["low"] + premium - yield_haircut - reuse_haircut + post_stack["usd"]
+    )
     exclusive_mid = max(THEN["exclusive_usd"]["low"], min(150000, exclusive_mid))
     exclusive = {
         "low": _round_money(exclusive_mid * 0.85),
@@ -136,8 +177,10 @@ def quote() -> Dict[str, Any]:
             "exclusive_mid_delta_usd": exclusive["mid"] - then_ex_mid,
             "source_mid_usd_then": then_src_mid,
             "source_mid_usd_now": source["mid"],
+            "post_stack_governance_usd": post_stack["usd"],
             "note": "The jump is sellability (install/API/portable at 10). Price is not 10x. Yield is still 8/10.",
         },
+        "post_stack_governance": post_stack,
         "replacement": {
             "hours": REPLACEMENT_HOURS,
             "rate_usd": REPLACEMENT_RATE_USD,
@@ -193,11 +236,13 @@ def format_quote(q: Dict[str, Any]) -> str:
     ex = sk["exclusive_lab_12mo"]["usd"]
     d = q["value_delta"]
     demo = q["token_demo"]
+    ps = q.get("post_stack_governance") or {}
+    ps_usd = int(ps.get("usd") or 0)
     lines = [
         f"Aegis price  v{q.get('version')}  sku={q.get('sku')}",
         f"  then  composite={q['then']['composite']} sellable=false  source=${THEN['source_usd']['low']:,}–{THEN['source_usd']['high']:,}  exclusive=${THEN['exclusive_usd']['low']:,}–{THEN['exclusive_usd']['high']:,}  advice=do_not_sell",
         f"  now   composite={q['now']['composite']} sellable=true   source=${src['low']:,}–{src['high']:,} (mid ${src['mid']:,})  exclusive=${ex['low']:,}–{ex['high']:,} (mid ${ex['mid']:,})",
-        f"  delta composite +{d['composite_points']}  exclusive mid ${d['exclusive_mid_usd_then']:,}→${d['exclusive_mid_usd_now']:,} ({d['exclusive_mid_delta_usd']:+,})",
+        f"  delta composite +{d['composite_points']}  exclusive mid ${d['exclusive_mid_usd_then']:,}→${d['exclusive_mid_usd_now']:,} ({d['exclusive_mid_delta_usd']:+,})  post_stack +${ps_usd:,}",
         f"  replacement {q['replacement']['hours']}h × ${q['replacement']['rate_usd']}/h = ${q['replacement']['usd']:,}",
         f"  token demo  week local ${demo['week_local_usd_counterfactual']} on {demo['week_local_saved_tokens']:,} tok  pair Δ ${demo['observed_pair_delta_usd']} estimated  savings_percent=null",
         f"  buyer  {q['buyer']['yes']}",

@@ -566,9 +566,26 @@ def _parse_evidence_refs(raw: list) -> list:
     return refs
 
 
+def _cmd_continuity_bench(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from aegis.continuity_bench import run_bench
+
+    path = Path(args.cases).expanduser()
+    if not path.is_file():
+        print(f"aegis continuity bench: cases file not found: {path}", file=sys.stderr)
+        return 2
+    report = run_bench(path)
+    print(json.dumps(report, indent=2))
+    return 0
+
+
 def _cmd_continuity(args: argparse.Namespace) -> int:
     """Default continuity entry/exit for a long code task."""
     from aegis.context_governor import persist_capsule, state_capsule
+
+    if args.continuity_action == "bench":
+        return _cmd_continuity_bench(args)
 
     if args.continuity_action == "checkpoint":
         capsule = state_capsule(
@@ -2721,6 +2738,16 @@ def build_parser() -> argparse.ArgumentParser:
     ct_checkpoint.add_argument("--evidence-ref", action="append", default=[], dest="evidence_ref")
     ct_checkpoint.add_argument("--deletion-path", default="", dest="deletion_path")
     ct_checkpoint.set_defaults(func=_cmd_continuity)
+    ct_bench = ct_sub.add_parser("bench", help="A/B baseline vs governed handoff on continuity fixture")
+    ct_bench.add_argument(
+        "--cases",
+        default=str(
+            Path.home()
+            / "Documents/ChatGPT/Memory utility Labs/experiments/continuity-assurance/cases.json"
+        ),
+    )
+    ct_bench.add_argument("--json", action="store_true")
+    ct_bench.set_defaults(func=_cmd_continuity)
 
     oc = sub.add_parser("outcome", help="Record or inspect matched workflow outcomes")
     oc_sub = oc.add_subparsers(dest="outcome_action", required=True)
