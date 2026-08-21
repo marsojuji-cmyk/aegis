@@ -1,6 +1,5 @@
-i wa"""Continuity A/B bench tests."""
+"""Continuity A/B bench tests."""
 
-import json
 from pathlib import Path
 
 import pytest
@@ -25,5 +24,3 @@ def test_governed_beats_baseline_on_fixture(aegis_tmp):
     assert report["governed"]["handoff_failures"] < report["baseline"]["handoff_failures"]
     assert report["governed"]["unsupported_recalls"] < report["baseline"]["unsupported_recalls"]
     assert report["delta"]["pass_rate_governed"] == 1.0
-python3 -m aegis price quote
-python3 -m aegis price quote --json   # full post_stack_governance object
