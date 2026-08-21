@@ -232,17 +232,20 @@ def _probe_m010() -> Dict[str, Any]:
 
 def _probe_m011() -> Dict[str, Any]:
     from aegis.memory import memory_stats
+    from aegis.memory_admit import record_stats
 
     cfg = load_config()
     on = opt_in(cfg, "auto_memory")
     stats = memory_stats()
-    aligned = (not on) and isinstance(stats, dict)
+    durable = record_stats()
+    propose_ok = isinstance(durable, dict) and "proposed" in durable
+    aligned = propose_ok and (not on or int(durable.get("proposed") or 0) <= int(getattr(cfg, "memory_proposed_max", 200)))
     return _ok(
         "M-011",
-        verdict="park",
+        verdict="keep" if aligned else "repair",
         aligned=aligned,
-        evidence=f"auto_memory={on} entries={stats.get('entries')} r015=open",
-        action="keep parked; R-015 still blocks domain-scoped Hermes memory writes",
+        evidence=f"auto_memory={on} ephemeral={stats.get('entries')} proposed={durable.get('proposed')}",
+        action="capture proposes durable records; ephemeral tier gated on auto_memory",
     )
 
 
@@ -250,15 +253,15 @@ def _probe_m012() -> Dict[str, Any]:
     from aegis.memory import memory_context_block
 
     cfg = load_config()
-    on = opt_in(cfg, "auto_memory")
-    block = memory_context_block("module-health", project="aegis", limit=1)
-    aligned = (not on) and isinstance(block, str)
+    block = memory_context_block("module-health", project="aegis", limit=2)
+    has_tier = ("durable provenance" in block) or ("ephemeral cache" in block) or block == ""
+    aligned = isinstance(block, str) and has_tier
     return _ok(
         "M-012",
-        verdict="park",
+        verdict="keep" if aligned else "repair",
         aligned=aligned,
-        evidence=f"auto_memory={on} inject_len={len(block)}",
-        action="keep parked; router injects only when auto_memory is explicit",
+        evidence=f"auto_memory={opt_in(cfg, 'auto_memory')} inject_len={len(block)}",
+        action="inject labels durable vs ephemeral tiers",
     )
 
 

@@ -552,6 +552,20 @@ def _load_source_manifest(path_text: str) -> Tuple[Dict[str, str], Set[str]]:
     return artifact, approved_paths
 
 
+def _parse_evidence_refs(raw: list) -> list:
+    refs = []
+    for item in raw or []:
+        text = str(item).strip()
+        if not text:
+            continue
+        if "=" in text:
+            kind, _, path = text.partition("=")
+            refs.append({"kind": kind.strip(), "ref": path.strip()})
+        else:
+            refs.append({"kind": "path", "ref": text})
+    return refs
+
+
 def _cmd_continuity(args: argparse.Namespace) -> int:
     """Default continuity entry/exit for a long code task."""
     from aegis.context_governor import persist_capsule, state_capsule
@@ -565,6 +579,11 @@ def _cmd_continuity(args: argparse.Namespace) -> int:
             current_defect=args.defect,
             next_action=args.next_action,
             mission=args.mission,
+            owner=getattr(args, "owner", "operator"),
+            privacy_class=getattr(args, "privacy_class", "internal"),
+            open_risks=getattr(args, "open_risk", []),
+            evidence_refs=_parse_evidence_refs(getattr(args, "evidence_ref", [])),
+            deletion_path=getattr(args, "deletion_path", ""),
         )
         path = persist_capsule(capsule)
         out = {"capsule": capsule, "path": str(path)}
@@ -701,7 +720,18 @@ def _cmd_guard(args: argparse.Namespace) -> int:
             },
             "mission_lock": {
                 "allowed_domains": [d.strip() for d in cfg.guard_allowed_domains.split(",") if d.strip()],
-            }
+                "status": "locked" if [d.strip() for d in cfg.guard_allowed_domains.split(",") if d.strip()] else "unlocked",
+                "require": bool(getattr(cfg, "guard_require_mission_lock", False)),
+                "shadow_mode": bool(cfg.guard_shadow_mode),
+                "mission": str(getattr(cfg, "guard_mission", "") or ""),
+            },
+            "agency": {
+                "mode": str(getattr(cfg, "guard_agency_mode", "assistive")),
+            },
+            "memory_provenance": {
+                "require": bool(getattr(cfg, "guard_require_memory_provenance", False)),
+                "proposed_max": int(getattr(cfg, "memory_proposed_max", 200)),
+            },
         }
         if args.json:
             print(json.dumps(out, indent=2))
@@ -716,7 +746,30 @@ def _cmd_guard(args: argparse.Namespace) -> int:
             print(f"  Min signal score: {out['signal_preservation']['min_signal_score']}")
             print(f"  Preserve keywords: {', '.join(out['signal_preservation']['preserve_keywords']) or 'unset'}")
             print("Mission Lock:")
+            print(f"  Status: {out['mission_lock']['status'].upper()}")
+            print(f"  Require: {out['mission_lock']['require']}")
+            print(f"  Shadow: {out['mission_lock']['shadow_mode']}")
             print(f"  Allowed domains: {', '.join(out['mission_lock']['allowed_domains']) or 'unset'}")
+            print(f"  Mission: {out['mission_lock']['mission'] or 'unset'}")
+            print("Agency:")
+            print(f"  Mode: {out['agency']['mode']}")
+            print("Memory provenance:")
+            print(f"  Require admitted id: {out['memory_provenance']['require']}")
+            print(f"  Proposed max: {out['memory_provenance']['proposed_max']}")
+        return 0
+
+    if args.guard_action == "set-mode":
+        from aegis.agency import AGENCY_MODES, normalize_mode
+        from aegis.config import load_config, save_config
+
+        mode = normalize_mode(args.mode)
+        if mode not in AGENCY_MODES:
+            print(f"aegis guard set-mode: invalid mode {args.mode!r}", file=sys.stderr)
+            return 2
+        cfg = load_config()
+        cfg.guard_agency_mode = mode
+        save_config(cfg)
+        print(json.dumps({"guard_agency_mode": mode}) if args.json else f"guard_agency_mode={mode}")
         return 0
 
     if args.guard_action == "rotate":
@@ -784,6 +837,98 @@ def _cmd_guard(args: argparse.Namespace) -> int:
                 dt = datetime.datetime.fromtimestamp(d.timestamp, tz=datetime.timezone.utc).isoformat()
                 score_str = f" score={d.score:.2f} |" if d.score is not None else ""
                 print(f"[{dt}] | {d.rule} | {d.action} |{score_str} {d.reason}")
+        return 0
+    return 1
+
+
+def _cmd_memory(args: argparse.Namespace) -> int:
+    import json as json_lib
+    from pathlib import Path
+
+    from aegis.memory_admit import (
+        add_conflict,
+        admit,
+        delete_record,
+        list_records,
+        record_stats,
+        validate_record,
+    )
+
+    action = args.memory_action
+    if action == "stats":
+        print(json_lib.dumps(record_stats(), indent=2) if args.json else json_lib.dumps(record_stats(), indent=2))
+        return 0
+
+    if action == "list":
+        rows = list_records(
+            memory_type=args.type or None,
+            privacy_class=args.privacy or None,
+            evidence_status=args.status or None,
+            limit=args.limit,
+        )
+        print(json_lib.dumps(rows, indent=2) if args.json else json_lib.dumps(rows, indent=2))
+        return 0
+
+    if action == "admit":
+        if args.file:
+            payload = json_lib.loads(Path(args.file).read_text(encoding="utf-8"))
+        elif args.stdin:
+            payload = json_lib.loads(sys.stdin.read())
+        else:
+            print("aegis memory admit: need --file or --stdin", file=sys.stderr)
+            return 2
+        ok, errors = validate_record(payload)
+        if not ok:
+            print(json_lib.dumps({"ok": False, "errors": errors}, indent=2), file=sys.stderr)
+            return 2
+        row = admit(payload, replace=bool(args.replace))
+        print(json_lib.dumps({"ok": True, "record": row}, indent=2))
+        return 0
+
+    if action == "conflict":
+        row = add_conflict(args.id, args.contradicts, reason=args.reason or "")
+        print(json_lib.dumps(row, indent=2))
+        return 0
+
+    if action == "delete":
+        out = delete_record(args.id, deletion_path=args.deletion_path or "cli")
+        print(json_lib.dumps(out, indent=2))
+        return 0
+
+    return 1
+
+
+def _cmd_relay(args: argparse.Namespace) -> int:
+    import json as json_lib
+    from pathlib import Path
+
+    from aegis.relay import correlate, export_redacted, query, tail
+
+    action = args.relay_action
+    if action == "tail":
+        rows = tail(args.source, limit=args.limit)
+        print(json_lib.dumps(rows, indent=2) if args.json else json_lib.dumps(rows, indent=2))
+        return 0
+    if action == "query":
+        rows = query(
+            source=args.source,
+            kind=args.kind or "",
+            request_id=args.request_id or "",
+            since=args.since or "",
+            limit=args.limit,
+        )
+        print(json_lib.dumps(rows, indent=2))
+        return 0
+    if action == "correlate":
+        out = correlate(args.request_id)
+        print(json_lib.dumps(out, indent=2))
+        return 0
+    if action == "export":
+        from aegis.paths import relay_export_dir
+
+        dest = Path(args.output) if args.output else relay_export_dir() / "relay_export.json"
+        count = export_redacted(dest, source=args.source, limit=args.limit)
+        print(json_lib.dumps({"exported": count, "path": str(dest)}, indent=2))
         return 0
     return 1
 
@@ -2569,6 +2714,12 @@ def build_parser() -> argparse.ArgumentParser:
     ct_checkpoint.add_argument("--defect", default="")
     ct_checkpoint.add_argument("--next-action", required=True)
     ct_checkpoint.add_argument("--mission", default="", help="Original mission objective (or carried over if omitted)")
+    ct_checkpoint.add_argument("--owner", default="operator")
+    ct_checkpoint.add_argument("--privacy-class", default="internal", dest="privacy_class",
+                               choices=["public", "internal", "private", "sensitive", "restricted"])
+    ct_checkpoint.add_argument("--open-risk", action="append", default=[], dest="open_risk")
+    ct_checkpoint.add_argument("--evidence-ref", action="append", default=[], dest="evidence_ref")
+    ct_checkpoint.add_argument("--deletion-path", default="", dest="deletion_path")
     ct_checkpoint.set_defaults(func=_cmd_continuity)
 
     oc = sub.add_parser("outcome", help="Record or inspect matched workflow outcomes")
@@ -3007,6 +3158,67 @@ def build_parser() -> argparse.ArgumentParser:
                      help="Rotate only when the log is at least this many MB")
     gdr.add_argument("--json", action="store_true")
     gdr.set_defaults(func=_cmd_guard)
+
+    gdsm = gd_sub.add_parser("set-mode", help="Set bounded agency mode (reflective|assistive|autonomous)")
+    gdsm.add_argument("mode", choices=["reflective", "assistive", "autonomous"])
+    gdsm.add_argument("--json", action="store_true")
+    gdsm.set_defaults(func=_cmd_guard)
+
+    mem = sub.add_parser("memory", help="Durable provenance memory (memory_records.jsonl)")
+    mem_sub = mem.add_subparsers(dest="memory_action", required=True)
+    mem_admit = mem_sub.add_parser("admit", help="Validate and admit a memory record")
+    mem_admit.add_argument("--file", default="")
+    mem_admit.add_argument("--stdin", action="store_true")
+    mem_admit.add_argument("--replace", action="store_true")
+    mem_admit.add_argument("--json", action="store_true")
+    mem_admit.set_defaults(func=_cmd_memory)
+    mem_list = mem_sub.add_parser("list", help="List admitted memory records")
+    mem_list.add_argument("--type", default="")
+    mem_list.add_argument("--privacy", default="")
+    mem_list.add_argument("--status", default="")
+    mem_list.add_argument("--limit", type=int, default=50)
+    mem_list.add_argument("--json", action="store_true")
+    mem_list.set_defaults(func=_cmd_memory)
+    mem_conflict = mem_sub.add_parser("conflict", help="Link conflicting records")
+    mem_conflict.add_argument("--id", required=True)
+    mem_conflict.add_argument("--contradicts", required=True)
+    mem_conflict.add_argument("--reason", default="")
+    mem_conflict.add_argument("--json", action="store_true")
+    mem_conflict.set_defaults(func=_cmd_memory)
+    mem_delete = mem_sub.add_parser("delete", help="Delete a durable memory record")
+    mem_delete.add_argument("--id", required=True)
+    mem_delete.add_argument("--deletion-path", default="")
+    mem_delete.add_argument("--json", action="store_true")
+    mem_delete.set_defaults(func=_cmd_memory)
+    mem_stats = mem_sub.add_parser("stats", help="Memory tier statistics")
+    mem_stats.add_argument("--json", action="store_true")
+    mem_stats.set_defaults(func=_cmd_memory)
+
+    rl = sub.add_parser("relay", help="Observability relay over guard/continuity/ledger/outcomes")
+    rl_sub = rl.add_subparsers(dest="relay_action", required=True)
+    rl_tail = rl_sub.add_parser("tail", help="Tail recent relay events")
+    rl_tail.add_argument("--source", default="all", choices=["all", "guard", "continuity", "ledger", "outcomes"])
+    rl_tail.add_argument("--limit", type=int, default=50)
+    rl_tail.add_argument("--json", action="store_true")
+    rl_tail.set_defaults(func=_cmd_relay)
+    rl_query = rl_sub.add_parser("query", help="Filter relay events")
+    rl_query.add_argument("--source", default="all")
+    rl_query.add_argument("--kind", default="")
+    rl_query.add_argument("--request-id", default="")
+    rl_query.add_argument("--since", default="")
+    rl_query.add_argument("--limit", type=int, default=50)
+    rl_query.add_argument("--json", action="store_true")
+    rl_query.set_defaults(func=_cmd_relay)
+    rl_corr = rl_sub.add_parser("correlate", help="Correlate events by request_id")
+    rl_corr.add_argument("request_id")
+    rl_corr.add_argument("--json", action="store_true")
+    rl_corr.set_defaults(func=_cmd_relay)
+    rl_export = rl_sub.add_parser("export", help="Export redacted relay snapshot")
+    rl_export.add_argument("--output", default="")
+    rl_export.add_argument("--source", default="all")
+    rl_export.add_argument("--limit", type=int, default=200)
+    rl_export.add_argument("--json", action="store_true")
+    rl_export.set_defaults(func=_cmd_relay)
 
     sp = sub.add_parser("sprint", help="Sprint ledger — track Aegis work in iterations")
     sp_sub = sp.add_subparsers(dest="sprint_action", required=True)

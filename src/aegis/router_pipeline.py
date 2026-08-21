@@ -382,12 +382,14 @@ def run_pipeline(
             },
         )
 
-    # auto-capture cross-model memory from successful runs
+    # auto-capture: propose durable record when enabled; ephemeral KV optional
     try:
-        from aegis.config import load_config
-        from aegis.memory import auto_capture_from_run
+        from aegis.config import load_config, opt_in
 
-        if load_config().auto_memory:
+        cfg = load_config()
+        if opt_in(cfg, "auto_memory"):
+            from aegis.memory import auto_capture_from_run
+
             auto_capture_from_run(
                 task=task,
                 provider=str(resp.get("provider") or prov.name),
@@ -396,6 +398,16 @@ def run_pipeline(
                 shrunk=str(landed.get("shrunk_text") or "")[:200],
                 ok=True,
             )
+            from aegis.memory_admit import propose, record_stats
+
+            stats = record_stats()
+            if int(stats.get("proposed") or 0) <= int(getattr(cfg, "memory_proposed_max", 200)):
+                propose(
+                    f"run ok: {str(task)[:120]}",
+                    source_id=str(pack_id or req_id),
+                    captured_by="router_pipeline",
+                    project_hint=str(task)[:40],
+                )
     except Exception:  # noqa: BLE001
         pass
 

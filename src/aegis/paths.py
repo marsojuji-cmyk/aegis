@@ -81,7 +81,21 @@ def legacy_import_flag() -> Path:
 
 
 def memory_path() -> Path:
+    """Ephemeral cross-model KV cache (M-012 inject tier)."""
     return aegis_home() / "memory.jsonl"
+
+
+def memory_records_path() -> Path:
+    """Durable provenance-bearing memory records (plate #06)."""
+    return aegis_home() / "memory_records.jsonl"
+
+
+def relay_export_dir() -> Path:
+    return aegis_home() / "relay_exports"
+
+
+def workflows_path() -> Path:
+    return aegis_home() / "workflows.json"
 
 
 def intel_state_path() -> Path:

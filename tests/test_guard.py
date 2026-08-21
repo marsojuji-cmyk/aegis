@@ -430,3 +430,32 @@ def test_guard_rotate_cli(tmp_path, monkeypatch, capsys):
     out = json.loads(capsys.readouterr().out)
     assert out["rotated"] is False
     assert out["reason"] == "empty_log"
+
+
+def test_guard_agency_reflective_blocks_medium_write():
+    from aegis.agency import gate_decision
+
+    decision, _ = gate_decision("reflective", "fs.write", "medium")
+    assert decision == "deny"
+
+
+def test_guard_agency_assistive_allows_medium_write():
+    from aegis.agency import gate_decision
+
+    decision, _ = gate_decision("assistive", "fs.write", "medium")
+    assert decision == "allow"
+
+
+def test_guard_unknown_tool_skips_agency():
+    config = AegisConfig(
+        guard_shadow_mode=False,
+        guard_max_tool_calls=10,
+        guard_max_velocity_calls_per_min=10,
+    )
+    guard = AegisGuard(config)
+
+    @aegis_protect(guard)
+    def dummy_tool(x):
+        return x
+
+    assert dummy_tool(1) == 1

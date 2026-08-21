@@ -47,7 +47,7 @@ Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 | R-012 | complete-at-gate | Live allow+deny + admission framework. Measurement parked. |
 | R-013 | mitigated | This register was empty; now an index only. |
 | R-014 | parked | No admitted pair. Resume only with authorized native-tool model. |
-| R-015 | open | Memory writes are not domain-scoped to the Hermes store. |
+| R-015 | mitigated | Durable memory uses memory_records.jsonl + admit gate; Hermes ~/.hermes store remains separate (domain scope documented). |
 
 ## Questions (04_OPEN_QUESTIONS.md)
 
@@ -60,8 +60,8 @@ Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 | Q-012 | parked | No configured native-tool-call model. Do not probe leftovers. |
 | Q-013 | locked-observe | Deterministic validator. Mapping observe-only. No D-025. |
 | Q-014 | answered | Factory OS overlay stays MUL graph. Product SKU is 1.2 kernel program (D-031). |
-| Q-015 | open | When to require the six-field consequential-action envelope on live tools? |
-| Q-016 | open | Corporate hierarchy: catalog only, or role runtime? Blocked on R-015. |
+| Q-015 | partial | Agency modes on guard/Hermes gate; consequential actions → require-review in assistive. |
+| Q-016 | open | Corporate hierarchy: catalog only, or role runtime? R-015 mitigated for Aegis tier. |
 
 ## Sprints (05_SPRINT_BOARD.md)
 
@@ -74,7 +74,8 @@ Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 | SP-011 | blocked | Q-011 hard-block (D-011). |
 | SP-012 | parked | Q-013 encoder (locked-observe). |
 | SP-013 | done | Capsule artifacts pack_id (D-026). |
-| SP-014 | blocked | R-015 memory domain scope. |
+| SP-014 | done | memory_admit + memory_records.jsonl; R-015 mitigated for Aegis durable tier. |
+| SP-024 | done | Agency modes, observability relay, sentinel capsule fields, memory mesh tiers. |
 | SP-015 | done | Cursor pack-first gate + hit/miss receipt. |
 | SP-016 | done | Empty continuity pack fails closed. |
 | SP-017 | done | Four Cursor skills + `--install`. |
@@ -100,8 +101,8 @@ Budget-aware catalog. No prior M- register existed; IDs are the live modules.
 | M-008 | parked | auto_invest | Frozen. `opt_in` fail-closed. |
 | M-009 | parked | auto_queue_ideas | Armed only if invest or apply-fixes is on. |
 | M-010 | active | seed_ideas | Idempotent three-title starter seed. |
-| M-011 | parked | memory_capture | Off unless `auto_memory`. R-015 open. |
-| M-012 | parked | cross_model_memory_inject | Router inject gated on `auto_memory`. |
+| M-011 | active | memory_capture | Proposes durable records when auto_memory; shed when proposed queue full. |
+| M-012 | active | cross_model_memory_inject | Inject labels durable vs ephemeral tiers. |
 | M-013 | superseded | exploratory_enrichment | Removed from catalog; never had a runtime. |
 | M-014 | active | continuity_bridge | Auto-fires only on emergency band. |
 

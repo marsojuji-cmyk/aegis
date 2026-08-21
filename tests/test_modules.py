@@ -66,7 +66,8 @@ def test_health_covers_every_module(aegis_tmp):
     assert by_id["M-001"]["verdict"] == "keep"
     assert by_id["M-006"]["verdict"] == "park"
     assert by_id["M-008"]["verdict"] == "park"
-    assert by_id["M-011"]["verdict"] == "park"
+    assert by_id["M-011"]["verdict"] == "keep"
+    assert by_id["M-012"]["verdict"] == "keep"
     assert by_id["M-013"]["verdict"] == "superseded"
     assert by_id["M-013"]["aligned"] is True
     assert by_id["M-014"]["verdict"] == "keep"

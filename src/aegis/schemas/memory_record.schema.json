@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://memoryutility.lab/schemas/memory-record.schema.json",
+  "title": "Aegis Memory Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "memory_type", "content", "provenance", "confidence",
+    "evidence_status", "emotion", "privacy_class", "observed_at",
+    "recorded_at", "deletion_path", "conflicts_with"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "memory_type": { "enum": ["episodic", "semantic", "procedural", "preference"] },
+    "content": { "type": "string", "minLength": 1 },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_type", "source_id", "captured_by"],
+      "properties": {
+        "source_type": { "enum": ["direct_observation", "user_statement", "document", "tool_result", "model_inference"] },
+        "source_id": { "type": "string", "minLength": 1 },
+        "captured_by": { "type": "string", "minLength": 1 }
+      }
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "evidence_status": { "enum": ["observed", "verified", "inferred", "proposed", "unknown"] },
+    "emotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valence", "arousal", "curiosity", "trust", "uncertainty", "salience", "agency", "attachment", "fatigue", "cognitive_load"],
+      "properties": {
+        "valence": { "type": "number", "minimum": -1, "maximum": 1 },
+        "arousal": { "type": "number", "minimum": 0, "maximum": 1 },
+        "curiosity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "trust": { "type": "number", "minimum": 0, "maximum": 1 },
+        "uncertainty": { "type": "number", "minimum": 0, "maximum": 1 },
+        "salience": { "type": "number", "minimum": 0, "maximum": 1 },
+        "agency": { "type": "number", "minimum": 0, "maximum": 1 },
+        "attachment": { "type": "number", "minimum": 0, "maximum": 1 },
+        "fatigue": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cognitive_load": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "privacy_class": { "enum": ["public", "internal", "private", "sensitive", "restricted"] },
+    "observed_at": { "type": "string", "minLength": 1 },
+    "recorded_at": { "type": "string", "minLength": 1 },
+    "deletion_path": { "type": "string", "minLength": 1 },
+    "conflicts_with": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  }
+}

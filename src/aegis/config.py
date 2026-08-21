@@ -69,6 +69,11 @@ class AegisConfig:
     guard_audit_limit: int = 50
     guard_shadow_mode: bool = True
     guard_signal_shadow_mode: bool = True
+    guard_require_mission_lock: bool = False
+    guard_mission: str = ""
+    guard_agency_mode: str = "assistive"  # reflective | assistive | autonomous
+    guard_require_memory_provenance: bool = False
+    memory_proposed_max: int = 200
     # v1 Hermes notes pin. Empty = unset. Never fall through to DEFAULT_ROOT.
     hermes_notes_root: str = ""
 
@@ -174,6 +179,12 @@ def _format_toml(cfg: AegisConfig) -> str:
         f'guard_signal_preserve_keywords = "{cfg.guard_signal_preserve_keywords}"',
         f"guard_audit_limit = {cfg.guard_audit_limit}",
         f"guard_shadow_mode = {str(cfg.guard_shadow_mode).lower()}",
+        f"guard_signal_shadow_mode = {str(cfg.guard_signal_shadow_mode).lower()}",
+        f"guard_require_mission_lock = {str(cfg.guard_require_mission_lock).lower()}",
+        f'guard_mission = "{cfg.guard_mission}"',
+        f'guard_agency_mode = "{cfg.guard_agency_mode}"',
+        f"guard_require_memory_provenance = {str(cfg.guard_require_memory_provenance).lower()}",
+        f"memory_proposed_max = {cfg.memory_proposed_max}",
         f'hermes_notes_root = "{cfg.hermes_notes_root}"',
         "",
     ]
