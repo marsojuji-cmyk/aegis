@@ -1,6 +1,6 @@
 """Aegis — JIT token supply chain (piggy bank + 3R)."""
 
-__version__ = "1.2.0"
+__version__ = "1.3.1"
 
 # Shared concurrency defaults (CLI, pipeline, daemon status)
 DEFAULT_BATCH_WORKERS = 16

@@ -1,4 +1,4 @@
-# Aegis 1.2.0
+# Aegis 1.3.1
 
 **Agent operating system** for AI coding work: kernel (process / memory / drivers / syscalls), portable data plane, frozen `/v1` API, honest yield proof.
 
@@ -88,6 +88,6 @@ aegis budget | surplus | version
 
 ## Version
 
-**1.2.0** — Master Aegis product OS (`pyproject.toml` / `src/aegis/__init__.py`). Hermes plugin identity stays 1.0.0. `savings_percent` is billed USD on `matched_provider_pairs` (D-040 tiny-chat). Implement packs stay unrouted.
+**1.3.1** — Bounded autoscan: approved local/public sources, incremental fingerprints, reversible quarantine, explicit circuit recovery, and a calibration lock on public research. Local content stays local; outbound action remains unauthorized. ROI remains withheld until accepted outcomes and provider-observed incremental cost are matched.
 
 See [docs/EVOLUTION.md](docs/EVOLUTION.md) · [docs/ABSOLUTE.md](docs/ABSOLUTE.md) · [docs/FIELD.md](docs/FIELD.md)

@@ -18,7 +18,25 @@ REQUIRED_KEYS: Dict[str, Set[str]] = {
     "GET /v1/aegis/spec": {"ok", "api_version", "endpoints", "kernel_syscalls", "version"},
     "GET /v1/aegis/kernel": {"ok", "kernel", "version"},
     "GET /v1/aegis/yield": {"ok", "yield", "version"},
+    "GET /v1/aegis/evidence-yield": {
+        "ok",
+        "active_outcome",
+        "evidence_health",
+        "review_queue",
+        "sources",
+        "paused_circuits",
+        "yield",
+        "calibration",
+        "version",
+    },
+    "GET /v1/aegis/autoscan": {
+        "ok", "state", "scheduler_running", "approved_sources", "failures",
+        "observed_cost_usd", "quarantine_enabled", "calibration", "version",
+    },
     "POST /v1/aegis/run": {"ok"},
+    "POST /v1/aegis/evidence-yield/govern": {"ok", "decision_id", "decision", "version"},
+    "POST /v1/aegis/evidence-yield/outcome": {"ok", "outcome", "version"},
+    "POST /v1/aegis/autoscan/control": {"ok", "action", "outbound_action_authorized", "version"},
 }
 
 KERNEL_SYSCALLS = (

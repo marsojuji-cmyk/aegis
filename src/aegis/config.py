@@ -37,6 +37,10 @@ class AegisConfig:
     auto_apply_fixes: bool = False
     auto_memory: bool = False
     intel_tick_seconds: int = 300
+    autoscan_interval_seconds: int = 300
+    autoscan_public_interval_seconds: int = 86400
+    autoscan_max_item_bytes: int = 1_000_000
+    autoscan_daily_cost_ceiling_usd: float = 0.0
     min_roi_grade_auto: str = "B"  # only auto-invest A/B ideas
     forecast_horizon_days: int = 7
     # Forecast advice thresholds (no magic numbers in forecast._advice)
@@ -154,6 +158,10 @@ def _format_toml(cfg: AegisConfig) -> str:
         f"auto_apply_fixes = {str(cfg.auto_apply_fixes).lower()}",
         f"auto_memory = {str(cfg.auto_memory).lower()}",
         f"intel_tick_seconds = {cfg.intel_tick_seconds}",
+        f"autoscan_interval_seconds = {cfg.autoscan_interval_seconds}",
+        f"autoscan_public_interval_seconds = {cfg.autoscan_public_interval_seconds}",
+        f"autoscan_max_item_bytes = {cfg.autoscan_max_item_bytes}",
+        f"autoscan_daily_cost_ceiling_usd = {cfg.autoscan_daily_cost_ceiling_usd}",
         f'min_roi_grade_auto = "{cfg.min_roi_grade_auto}"',
         f"forecast_horizon_days = {cfg.forecast_horizon_days}",
         f"cache_hit_threshold = {cfg.cache_hit_threshold}",

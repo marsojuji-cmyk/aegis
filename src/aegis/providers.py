@@ -33,7 +33,7 @@ PROVIDERS: Dict[str, ProviderSpec] = {
         base_url=os.environ.get("XAI_BASE_URL", "https://api.x.ai/v1"),
         api_style="openai_chat",
         env_key="XAI_API_KEY",
-        default_model=os.environ.get("AEGIS_GROK_MODEL", "grok-2-latest"),
+        default_model=os.environ.get("AEGIS_GROK_MODEL", "grok-4.6"),
     ),
     "xai": ProviderSpec(
         name="xai",
@@ -41,7 +41,7 @@ PROVIDERS: Dict[str, ProviderSpec] = {
         base_url=os.environ.get("XAI_BASE_URL", "https://api.x.ai/v1"),
         api_style="openai_chat",
         env_key="XAI_API_KEY",
-        default_model=os.environ.get("AEGIS_GROK_MODEL", "grok-2-latest"),
+        default_model=os.environ.get("AEGIS_GROK_MODEL", "grok-4.6"),
     ),
     "openai": ProviderSpec(
         name="openai",

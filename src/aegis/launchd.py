@@ -79,6 +79,11 @@ def _src_root() -> str:
     return str(Path(__file__).resolve().parents[1])
 
 
+def router_launcher_path() -> Path:
+    """Keychain-aware router launcher kept outside the LaunchAgent plist."""
+    return Path(__file__).resolve().parents[2] / "scripts" / "aegis_router_keychain.sh"
+
+
 def build_plist(
     host: str = "127.0.0.1",
     port: int = 8787,
@@ -110,6 +115,7 @@ def build_plist(
         "PATH": path_env,
         "PYTHONPATH": src,
         "AEGIS_MANAGED_BY": "launchd",
+        "AEGIS_ENV": os.environ.get("AEGIS_ENV", "development"),
     }
     home = os.environ.get("AEGIS_HOME")
     if home:
@@ -118,15 +124,11 @@ def build_plist(
     return {
         "Label": LABEL,
         "ProgramArguments": [
+            "/bin/bash",
+            str(router_launcher_path()),
             py,
-            "-m",
-            "aegis",
-            "serve",
-            "--host",
             host,
-            "--port",
             str(port),
-            "--foreground",
         ],
         "RunAtLoad": True,
         "KeepAlive": True,

@@ -589,7 +589,7 @@ def doctor_report() -> Dict[str, Any]:
     return {
         "ok": len(failed) == 0,
         "product_ready": len(product_failed) == 0,
-        "epoch": "1.2",
+        "epoch": "1.3",
         "version": __version__,
         "summary": (
             f"v{__version__} ready" if not failed else f"{len(failed)} check(s) failed"
@@ -602,7 +602,7 @@ def doctor_report() -> Dict[str, Any]:
 def format_doctor_text(report: Dict[str, Any]) -> str:
     lines = [
         "Aegis doctor",
-        f"  epoch:   {report['epoch']} (v1.2 Master Aegis product OS)",
+        f"  epoch:   {report['epoch']} (v1.3 Evidence-to-Yield Autonomy)",
         f"  version: {report.get('version', __version__)}",
         f"  status:  {report['summary']}",
         "",

@@ -1627,13 +1627,13 @@ def _cmd_version(args: argparse.Namespace) -> int:
     _prepare_read()
     st = {
         "version": __version__,
-        "epoch": "1.2",
+        "epoch": "1.3",
         "compound": compound_status(),
     }
     if args.json:
         print(json.dumps(st, indent=2))
     else:
-        print(f"aegis {__version__} (epoch 1.2)")
+        print(f"aegis {__version__} (epoch 1.3)")
         c = st["compound"]
         print(
             f"  compound engine: {c.get('structured_count')} structured · "
@@ -2496,6 +2496,30 @@ def _cmd_price(args: argparse.Namespace) -> int:
     print(format_quote(payload))
     return 0
 
+
+
+def _cmd_intake(args: argparse.Namespace) -> int:
+    from aegis.intake import ingest_text, list_reports
+    _prepare_read()
+    action = getattr(args, 'intake_action', 'list') or 'list'
+    if action == 'add':
+        rec = ingest_text(args.text, sender=getattr(args, 'sender', 'local'), channel=getattr(args, 'channel', 'cli'))
+        if getattr(args, 'json', False):
+            print(json.dumps(rec, indent=2))
+        else:
+            print(f"[AEGIS:ACK] ID:{rec['id']} | Mod:{rec['module']} | Priority:{rec['priority']} | Queued")
+        return 0
+    elif action == 'list':
+        reports = list_reports(limit=getattr(args, 'limit', 10))
+        if getattr(args, 'json', False):
+            print(json.dumps(reports, indent=2))
+        else:
+            if not reports:
+                print('No ingested reports found.')
+            for r in reports:
+                print(f"{r.get('id')}  [{r.get('priority')}]  {r.get('module')}  -  {r.get('summary')}")
+        return 0
+    return 1
 
 def _cmd_demo(args: argparse.Namespace) -> int:
     from aegis.demo import (
@@ -3458,6 +3482,21 @@ def build_parser() -> argparse.ArgumentParser:
     demo_sc = demo_sub.add_parser("script", help="Spoken four beats (no pack)")
     demo_sc.add_argument("--json", action="store_true")
     demo_sc.set_defaults(func=_cmd_demo)
+
+
+    intake = sub.add_parser("intake", help="Ingest and triage issues/reports into AEGIS")
+    intake_sub = intake.add_subparsers(dest="intake_action", required=True)
+    intake_add = intake_sub.add_parser("add", help="Ingest an issue or report payload")
+    intake_add.add_argument("text", help="Message text (e.g. '!BUG [mod] summary')")
+    intake_add.add_argument("--sender", default="local", help="Sender identifier (e.g. phone/handle)")
+    intake_add.add_argument("--channel", default="cli", help="Source channel")
+    intake_add.add_argument("--json", action="store_true")
+    intake_add.set_defaults(func=_cmd_intake)
+
+    intake_list = intake_sub.add_parser("list", help="List recent ingested reports")
+    intake_list.add_argument("--limit", type=int, default=10)
+    intake_list.add_argument("--json", action="store_true")
+    intake_list.set_defaults(func=_cmd_intake)
 
     return p
 
