@@ -6,7 +6,7 @@ Formatted volume: [Introducing AEGIS Volume II (PDF)](book/Introducing-AEGIS-vol
 
 System architecture. Issue 1 · 2026 · Product 1.2.0.
 
-Volume I stated the law. This volume states the machinery: control plane, token capacity basin, guard middleware, Hermes routing. Four plates. Four systems. Where a number is not proven, the number stays null. Product routing stays off.
+Volume I stated the law. This volume states the machinery: control plane, token capacity basin, guard middleware, Hermes routing. Four plates. Four systems. Where a number is not proven, the number stays null. Broad product routing stays off; the bounded tiny-chat trial is on.
 
 ## I. Control plane
 
@@ -47,7 +47,7 @@ Ledger: `~/.aegis/guard_log.jsonl`. Rotate: `aegis guard rotate`. Hermes wrapper
 
 Coordination pathways are drawn. Tiny-chat routing is on (D-040): explore/review `deepseek/deepseek-v4-pro` may swap to `openai/gpt-5.4-nano`. Implement packs stay on the requested model. `savings_percent` is observed billed USD on `matched_provider_pairs` (41.3% on 20 pairs). Ledger tok reduction is not that number. `coding_prompt_scale` and `aegis_pack_scale` stay unrouted.
 
-The index is a marshal. Tiny-chat is a scoped trial, not a global switch. Implement packs are not routed.
+The index is a marshal. Tiny-chat is a scoped trial, not a global switch. Implement-pack routing is off; implement packs stay on the requested model.
 
 ---
 

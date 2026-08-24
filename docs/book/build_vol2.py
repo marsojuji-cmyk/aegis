@@ -79,8 +79,10 @@ def poster_page(path: Path, folio: str, rng: random.Random, caption: str = "") -
     im = v1.scuff(im, rng)
     if caption:
         d = ImageDraw.Draw(im)
-        d.text((28, H - 42), caption, font=F_LIGHT(11), fill=CREAM_DIM)
-        d.text((W - 28, H - 42), folio, font=F_LIGHT(11), fill=CREAM_DIM, anchor="ra")
+        d.rectangle((0, H - 64, W, H), fill=CHARCOAL)
+        d.line((0, H - 64, W, H - 64), fill=RULE, width=1)
+        d.text((MARGIN_X, H - 42), caption, font=F_LIGHT(11), fill=CREAM_DIM)
+        d.text((W - MARGIN_X, H - 42), folio, font=F_LIGHT(11), fill=CREAM_DIM, anchor="ra")
     return im
 
 
@@ -104,7 +106,7 @@ def page_title(rng: random.Random) -> Image.Image:
     col = [
         "Volume I stated the law. This volume states the machinery.",
         "Control plane. Token capacity basin. Guard middleware. Hermes routing.",
-        "Honesty yield: savings_percent is billed USD on matched_provider_pairs (D-040). Routing is tiny-chat only. Implement packs stay off.",
+        "Honest yield: savings_percent is billed USD on matched_provider_pairs (D-040). Tiny-chat routing is on. Implement-pack routing is off.",
         "Absolute Form: austere · aggressive on drift · protective reserve (>=80%).",
     ]
     v1.draw_paras(d, col, tx, 500, tw, F_REG(15), CREAM, 22)
@@ -128,7 +130,7 @@ def page_contents(rng: random.Random) -> Image.Image:
         ("5", "III. Guard middleware"),
         ("6", "     allow | deny | require-review"),
         ("7", "IV.  Hermes routing"),
-        ("8", "     tiny-chat on; implement packs off"),
+        ("8", "     tiny-chat on; implement-pack routing off"),
         ("9", "Colophon"),
     ]
     left, right = items[:7], items[7:]
@@ -146,7 +148,7 @@ def page_contents(rng: random.Random) -> Image.Image:
     d.line((MARGIN_X, H - 100, W - MARGIN_X, H - 100), fill=RULE, width=1)
     d.text(
         (MARGIN_X, H - 88),
-        "Issue 1.  Tiny-chat routing on (D-040).  Implement packs stay off.  Pack guesses stay unlabeled as savings_percent.",
+        "Issue 1.  Tiny-chat routing on (D-040).  Implement-pack routing off.  Pack guesses stay unlabeled as savings_percent.",
         font=F_OBL(14),
         fill=CREAM_DIM,
     )
@@ -188,7 +190,7 @@ def page_hermes(rng: random.Random) -> Image.Image:
         "aegis hermes search|resolve is a thin read-only CLI over the local index. Track first. Perplexity only for a live external miss. Perplexity never edits.",
         "Coordination pathways are drawn. Tiny-chat routing is on (D-040): explore/review v4-pro may swap to nano. Implement packs stay on the requested model. savings_percent is observed billed USD, not a pack guess.",
         "Advertised tool-call metadata is not admission. A research note is not a routing trial. The index is a marshal. It is not a switch.",
-        "The index is a marshal. Tiny-chat is a scoped trial, not a global switch. Implement packs are not routed.",
+        "The evidence scope is bounded: matched tiny-chat pairs authorize a trial, not broad product routing. Implement packs remain on the requested model.",
     ]
     return essay_page(rng, "CHAPTER IV", "Hermes routing", "7", False, paras)
 
@@ -254,6 +256,8 @@ def build() -> Path:
     )
     preview = OUT / "preview-vol2"
     preview.mkdir(exist_ok=True)
+    for stale in preview.glob("p[0-9][0-9].jpg"):
+        stale.unlink()
     for i, p in enumerate(pages):
         thumb = p.copy()
         thumb.thumbnail((900, 600), Image.Resampling.LANCZOS)

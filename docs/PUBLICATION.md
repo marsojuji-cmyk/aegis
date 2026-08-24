@@ -2,7 +2,7 @@
 
 **A Memory Utility Publication · Memory Utility Labs / Calgary, Alberta**
 
-Formatted volume: [Introducing AEGIS Draft 2 (PDF)](book/Introducing-AEGIS-draft2.pdf) — 9×6 landscape, 23 pages, geodesic plates facing each chapter. Rebuild: `python3 docs/book/build_book.py`. Prior Pelican draft: [Draft 1](book/Introducing-AEGIS.pdf). Volume II (system architecture): [Introducing AEGIS Vol. II](book/Introducing-AEGIS-vol2.pdf) — rebuild `python3 docs/book/build_vol2.py`.
+Canonical volume: [Introducing AEGIS Volume I (PDF)](book/Introducing-AEGIS-draft2.pdf) — 9×6 landscape, 24 pages, geodesic plates facing each chapter. Rebuild: `PYTHONPATH=src python3 docs/book/build_book.py`. The 17-page Pelican edition and 25-page live-type edition remain preserved archives. Volume II (system architecture): [Introducing AEGIS Vol. II](book/Introducing-AEGIS-vol2.pdf) — rebuild `PYTHONPATH=src python3 docs/book/build_vol2.py`.
 
 ![Cover plate: Introducing AEGIS, Technical Specifications Vol. I](assets/pub/aegis-hero.png)
 
@@ -56,13 +56,13 @@ Surplus is not decoration. Twenty percent of new savings flows to the wish jar �
 
 ## Honest yield
 
-![Honesty yield report: 41.3% observed billed USD, tiny-chat routing on, implement packs off](assets/pub/draft2/d2-yield.png)
+![Honest yield report: 41.3% observed billed USD on 20 matched pairs, tiny-chat routing on, implement-pack routing off](assets/pub/draft2/d2-yield.png)
 
 The hardest rule in the doctrine is the simplest: **no soft efficiency lies.** `savings_percent` is observed billed USD on `matched_provider_pairs`. It is not a pack guess. It is not an AA rank.
 
 **D-040.** Routing is on for tiny chat only: explore/review `deepseek/deepseek-v4-pro` may swap to `openai/gpt-5.4-nano`. Implement packs stay on the requested model — those receipts cost more, not less. `coding_prompt_scale` and `aegis_pack_scale` stay unrouted. Ledger tok reduction is `chars/4` counterfactual and is not `savings_percent`.
 
-Live report on this machine (`aegis yield report`):
+Frozen publication evidence (`book/evidence-2026-08-20.json`), captured from `aegis.yield_proof.yield_report` on 2026-08-20:
 
 | Workflow | Pairs | Savings % | Route |
 |---|---:|---:|---|
@@ -71,9 +71,9 @@ Live report on this machine (`aegis yield report`):
 | D-038 subset (same model) | 10 | 0.0 | no cut |
 | coding_prompt_scale | 5 | **−394.3** | off |
 | aegis_pack_scale (implement) | 5 | **−2472.8** | off |
-| ledger pack reduction | — | 32.1 tok (chars/4, not USD) | not routing |
+| ledger pack reduction | — | 32.2% (chars/4, not USD) | not routing |
 
-`routing_scope=tiny_chat`. Tests: 397 passed.
+`routing_scope=tiny_chat`. Release verification: 397 tests passed on 2026-08-20.
 
 That is the difference between a dashboard and a ledger. One flatters. The other holds.
 

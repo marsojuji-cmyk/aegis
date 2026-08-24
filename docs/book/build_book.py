@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import json
 import os
 import random
 from pathlib import Path
@@ -14,6 +15,7 @@ PLATES = ROOT / "assets" / "pub"
 PELICAN = PLATES / "pelican"
 D2 = PLATES / "draft2"
 OUT = Path(__file__).resolve().parent
+EVIDENCE = OUT / "evidence-2026-08-20.json"
 
 DPI = 200
 W, H = 9 * DPI, 6 * DPI  # 1800 × 1200
@@ -214,8 +216,8 @@ def letterbox_plate(path: Path, size: tuple[int, int]) -> Image.Image:
 def plate_page(path: Path, caption: str, rng: random.Random) -> Image.Image:
     im = fit_plate(path, (W, H))
     im = ImageEnhance.Contrast(im).enhance(1.04)
-    bar_h = 56
-    bar = Image.new("RGBA", (W, bar_h), (14, 14, 14, 210))
+    bar_h = 64
+    bar = Image.new("RGBA", (W, bar_h), (*CHARCOAL, 255))
     d = ImageDraw.Draw(bar)
     d.text((MARGIN_X, 18), caption, font=F_REG(14), fill=CREAM)
     star(d, W - MARGIN_X, 28, 5, CREAM)
@@ -230,7 +232,18 @@ def poster_fig(path: Path, caption: str, rng: random.Random) -> Image.Image:
     im = ImageEnhance.Contrast(im).enhance(1.03)
     im = scuff(im, rng)
     d = ImageDraw.Draw(im)
-    d.text((28, H - 42), caption, font=F_LIGHT(11), fill=CREAM_DIM)
+    d.rectangle((0, H - 64, W, H), fill=CHARCOAL)
+    d.line((0, H - 64, W, H - 64), fill=RULE, width=1)
+    d.text((MARGIN_X, H - 42), caption, font=F_LIGHT(11), fill=CREAM_DIM)
+    return im
+
+
+def yield_poster_fig(path: Path, caption: str, rng: random.Random) -> Image.Image:
+    """Normalize the legacy plate shorthand to the scoped routing decision."""
+    im = poster_fig(path, caption, rng)
+    d = ImageDraw.Draw(im)
+    d.rectangle((804, 880, 1058, 914), fill=(19, 19, 17))
+    d.text((815, 888), "IMPLEMENT-PACK ROUTING OFF", font=F_BOLD(11), fill=BRICK)
     return im
 
 
@@ -314,9 +327,9 @@ def page_contents(rng: random.Random) -> Image.Image:
         ("9", "V.   Honest yield"),
         ("10", "     41.3% billed USD · tiny-chat routing"),
         ("11", "VI.  Install"),
-        ("12", "VII. Data plane"),
-        ("13", "VIII. Field card"),
-        ("14", "Colophon"),
+        ("13", "VII. Data plane"),
+        ("15", "VIII. Field card"),
+        ("17", "Colophon"),
     ]
     left, right = items[:9], items[9:]
     f_num, f_item = F_LIGHT(14), F_REG(16)
@@ -448,15 +461,19 @@ def _usd(value) -> str:
     return f"${text}"
 
 
-def live_yield_rows() -> list[tuple[str, str]]:
-    """Press-time yield_report(). savings_percent is billed USD. Routing is tiny_chat only."""
-    y: dict = {}
-    try:
-        from aegis.yield_proof import yield_report
+def evidence_snapshot() -> dict:
+    """Load the frozen press-time evidence; publication builds fail closed."""
+    y = json.loads(EVIDENCE.read_text(encoding="utf-8"))
+    required = {"snapshot_id", "captured_at", "savings_percent", "routing_scope", "billed_pairs"}
+    missing = sorted(required - y.keys())
+    if missing or not y.get("ok"):
+        raise RuntimeError(f"invalid publication evidence snapshot: missing={missing}")
+    return y
 
-        y = yield_report() or {}
-    except Exception:  # noqa: BLE001
-        y = {}
+
+def evidence_yield_rows() -> list[tuple[str, str]]:
+    """Render the frozen evidence snapshot; savings_percent is observed billed USD."""
+    y = evidence_snapshot()
     billed = y.get("billed_pairs") or {}
     saved = int(y.get("ledger_tokens_saved_local") or 0)
     consumed = int(y.get("ledger_tokens_consumed") or 0)
@@ -482,7 +499,7 @@ def live_yield_rows() -> list[tuple[str, str]]:
         ("FIELD", "VALUE"),
         ("savings_percent", pct_s),
         ("routing", f"{scope}  (explore/review only)"),
-        ("implement packs", "off  (requested model)"),
+        ("implement-pack routing", "off  (packs use requested model)"),
         ("billed pairs", f"{pairs} / {observed}{complete}"),
         ("billed delta", _usd(billed.get("total_cost_usd_saved"))),
         ("ledger reduction", f"{0.0 if reduction is None else float(reduction):.1f}%  (chars/4, not USD)"),
@@ -493,7 +510,7 @@ def live_yield_rows() -> list[tuple[str, str]]:
 
 
 def draw_yield_table(d: ImageDraw.ImageDraw, x: int, y: int, width: int) -> int:
-    rows = live_yield_rows()
+    rows = evidence_yield_rows()
     col0 = 220
     row_h = 26
     for i, (field, value) in enumerate(rows):
@@ -532,7 +549,7 @@ def page_yield(rng: random.Random) -> Image.Image:
 
 def page_install(rng: random.Random) -> Image.Image:
     paras = [
-        "Any machine. This-host extras (Cursor / Hermes / AGIS) remain optional. They are not required for doctor --product.",
+        "Supported Python environments. This-host extras (Cursor / Hermes / AGIS) remain optional. They are not required for doctor --product.",
         "Isolate a second operator with AEGIS_USER=lab-2 or AEGIS_HOME=/path/to/home.",
         "python3 -m pip install --user -e .",
         "python3 -m aegis os init && python3 -m aegis doctor --product",
@@ -606,7 +623,7 @@ def build() -> Path:
         page_reserve(rng),
         fig("d2-reserve.png", "FIG. 4   RESERVE FLOOR  —  80%  ·  OPEN / THROTTLE / HARD STOP", rng),
         page_yield(rng),
-        poster_fig(D2 / "d2-yield.png", "FIG. 5   HONESTY YIELD REPORT  —  41.3% OBSERVED USD  ·  tiny_chat", rng),
+        yield_poster_fig(D2 / "d2-yield.png", "FIG. 5   HONEST YIELD  —  41.3% OBSERVED BILLED USD  ·  n=20  ·  tiny_chat  ·  2026-08-20", rng),
         page_install(rng),
         fig("d2-install.png", "FIG. 6   INSTALL  —  os init / doctor / ready", rng),
         page_data(rng),
@@ -624,13 +641,15 @@ def build() -> Path:
         save_all=True,
         append_images=pages[1:],
         resolution=DPI,
-        title="Introducing AEGIS (Draft 2)",
+        title="Introducing AEGIS Volume I",
         author="Memory Utility Labs / Calgary, Alberta",
         creator="Aegis monograph typesetter",
-        subject="A Memory Utility Publication · Technical Specifications, Vol. I · Draft 2",
+        subject="A Memory Utility Publication · Technical Specifications, Vol. I · Issue 1 · 2026",
     )
     preview = OUT / "preview-draft2"
     preview.mkdir(exist_ok=True)
+    for stale in preview.glob("p[0-9][0-9].jpg"):
+        stale.unlink()
     for i, p in enumerate(pages):
         thumb = p.copy()
         thumb.thumbnail((900, 600), Image.Resampling.LANCZOS)
@@ -641,6 +660,4 @@ def build() -> Path:
 if __name__ == "__main__":
     path = build()
     print(f"wrote {path} ({path.stat().st_size} bytes)")
-
-
 
