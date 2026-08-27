@@ -24,6 +24,7 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 | SP-023 | done | Covering reuse + os ready | — | D-032 |
 | SP-024 | done | Agency modes, observability relay, sentinel capsule fields, memory mesh tiers | — | — |
 | SP-025 | done | Retire Ether competing Hermes farm | — | — |
+| SP-026 | done | Sprint ledger reconciliation + version alignment | — | — |
 
 ## Detail
 
@@ -169,3 +170,10 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 - goal: APP-ETHER-HERMES-RETIRE-2026-08-27: inventory, preserve, stop farm, disable gateway hook. No chown tmp, no ektar, no D-011 thaw, no production guard change, no git push.
 - verified: Ether Hermes farm stopped (app=0 python=0). Gateway hook ai.hermes.gateway-hermes-nexus disabled. Primary a100 Hermes.app 79982 + doctor ok + hermes_corpus 32 + search hit Memory Utility Labs.md. Exclusions held: tmp owner ether, ektar untouched, D-011 frozen, config sha256 unchanged, no git push.
 - evidence: /Users/a100/.aegis/retirements/APP-ETHER-HERMES-RETIRE-2026-08-27 RESULT.json ROLLBACK.md disabled.508.plist ai.hermes.gateway-hermes-nexus=true
+
+### SP-026 — Sprint ledger reconciliation + version alignment
+
+- status: `done`
+- goal: SP-023/024/025 identity correction, reconcile CLI, setup.py 1.3.1, register/board sync, continuity addendum
+- verified: reconcile_known_history + audit ledger; aegis sprint reconcile CLI; setup.py 1.3.1; board/register sync; continuity addendum
+- evidence: git 1f1a0d5; pytest 444 passed; doctor v1.3.1 ready; sprint report SP-023/024/025

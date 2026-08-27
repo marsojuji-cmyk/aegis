@@ -85,6 +85,7 @@ Updated: 2026-08-27. Reconciled against the durable sprint ledger; historical en
 | SP-021 | done | Master Aegis 1.2.0 product OS (D-031). |
 | SP-023 | done | Release program: covering reuse + os ready (D-032). |
 | SP-025 | done | Retire Ether competing Hermes farm; original erroneous SP-023 ledger row preserved in reconciliation audit. |
+| SP-026 | done | Sprint ledger reconciliation + version alignment; reconcile CLI; setup.py 1.3.1. |
 
 ## Modules (`aegis modules health`)
 
