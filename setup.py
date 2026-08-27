@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="aegis",
-    version="1.2.0",
+    version="1.3.1",
     description="Aegis agent OS — portable JIT token supply chain",
     package_dir={"": "src"},
     packages=find_packages(where="src"),

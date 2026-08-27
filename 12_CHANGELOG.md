@@ -1,4 +1,33 @@
-# Changelog
+- **2026-08-20**: D-040 — billed `savings_percent` on matched_provider_pairs (41.3%). Tiny-chat routing on. Implement packs stay unrouted (pack-scale −2472.8%).
+
+
+- **2026-08-19**: `aegis guard rotate [--if-larger-mb N]` — guard-log rotation as a product surface (`rotate_guard_log` in guard.py). Timestamped `v2-archive` + paired manifest (sha256/lines/bytes), fail-closed on missing/empty (exit 2), `below_threshold` exits 0 for schedulable size caps. Live smoke on production log: below_threshold, untouched. 387 tests pass.
+
+- **2026-08-19**: Master hub `~/AEGIS` built (symlinks: repo/data/skills/vault + real `ops/` moved from `Desktop/AGEIS`; workspace file repointed). Repairs: stale `UNKNOWN.egg-info` removed + pip `-e` reinstall (metadata now 1.2.0); 48MB `guard_log.jsonl` rotated to v2 archive + manifest; stale worktrees `t_22e6bdc0`/`t_775b4c14` pruned (merged branches deleted); typo cluster fixed (`Devotes`→`agents`, leading-space ` Grok Build`, `Asistant`→`Assistant`, empty `Memory Utilitie Labs` debris removed); vault `:Ektar` merged into `Ektar/`, empty `Gemini/` removed; Finder tag taxonomy applied (`AEGIS` master + 5 category tags, 12/12 xattr-verified). Root-caused the 48MB log: the test suite was writing mock guard events into the production `guard_log.jsonl` — `tests/conftest.py` now session-redirects `GUARD_LOG_PATH` to tmp (verified: 5816 lines before = after a full run). 383 tests pass; daemon healthy on 1.2.0.
+
+- **2026-08-19**: Path A demo landed + gate deny JSON string. `covering_hit=True` on live rehearsal. Guard log accounting + `scripts/analyze_request_telemetry.py`. 379 tests pass. Buyer name still operator-gated.
+
+- **2026-08-18**: Path A demo CLI (`aegis demo start|run|buyer|status|script`). 14-day buyer clock + four-beat rehearsal. Frozen AA snapshot. No scrape, no routing, no outreach.
+
+- **2026-08-18**: D-039 — cheaper governed `gpt-5.4-nano` vs `deepseek-v4-pro`. Pair report eligible. Product routing still off.
+
+- **2026-08-18**: D-038 — ten billed matched pairs (`matched_provider_pairs`). Cost complete. Δcost=0. Routing withheld.
+
+- **2026-08-18**: D-037 live — five consecutive `nous_api` receipts. Window ready. Routing still withheld (2/10 pairs).
+
+- **2026-08-18**: D-036 — `provider_window_status` / `provider_window_ready` on verify-cost. Observe-only. Routing still withheld. No MUL thaw.
+
+- **2026-08-18**: D-035 — `aegis outcome verify-cost` labels gaps (`intentionally_excluded`). Does not authorize routing.
+
+- **2026-08-18**: D-034 — classify four live cost-trust gaps as intentionally_excluded (`local_rehearsal`, `local_cache`). Provenance classifier + tests. Named MUL 28→32. No outcomes.py/guard/wrapper edit. Routing remains withheld.
+
+- **2026-08-18**: D-033 — research-log pilot. Named AGIS MUL thaw 20→28. Deterministic note validator (`research_log.py` + pytest). Cost-trust records cite live `verify-cost`. No CLI. No routing-policy change. No Documents Labs writes.
+
+- **2026-08-18**: Honest product quote (`aegis price quote|skus|pitch`). Replacement-cost + completeness. Token $ is demo only. Hosted is not a SKU.
+
+- **2026-08-18**: D-032 — covering-pack reuse (subset hit, stale bytes miss). Freeze + honest yield on `doctor --product`. `aegis os ready`. No new intel modules. No `savings_percent`.
+
+- **2026-08-18**: Module health CLI (`aegis modules health|measure`). M-001..M-014 map the budget-aware catalog. Ghost `exploratory_enrichment` removed. Autonomy flags fail closed (`opt_in`). Docs no longer claim auto_* defaults true.
 
 - **2026-08-18**: Decision health CLI (`aegis decisions health|measure`). D-021 daemon restarted to 1.2.0. D-030 MUL index rebuilt 9→20. D-014 marked superseded.
 

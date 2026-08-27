@@ -18,6 +18,7 @@ from aegis.paths import ensure_home, sprints_path
 STATUSES = ("planned", "active", "done", "blocked", "parked")
 TASK_STATUSES = ("todo", "doing", "done")
 REPO_BOARD = "05_SPRINT_BOARD.md"
+RECONCILIATION_LEDGER = "sprint_reconciliations.jsonl"
 
 # Seeded once. Existing IDs are not overwritten (status/evidence survive).
 CATALOG: List[Dict[str, Any]] = [
@@ -180,6 +181,75 @@ def _write_all(rows: List[Dict[str, Any]]) -> None:
     with sprints_path().open("w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def reconciliation_path() -> Path:
+    """Return the append-only audit ledger for sprint identity corrections."""
+    return sprints_path().with_name(RECONCILIATION_LEDGER)
+
+
+def reconcile_known_history() -> Dict[str, Any]:
+    """Correct the approved SP-023 reuse without losing its original row.
+
+    The reconciliation ledger is written first and retains the exact pre-change
+    row plus the evidence used for the restored historical sprint records.
+    """
+    rows = _read()
+    if any(row["id"] in {"SP-024", "SP-025"} for row in rows):
+        return {"ok": False, "error": "SP-024 or SP-025 already exists; refusing reconciliation"}
+    retired = next(
+        (row for row in rows if row["id"] == "SP-023" and row["title"] == "Retire Ether competing Hermes farm"),
+        None,
+    )
+    if retired is None:
+        return {"ok": False, "error": "expected retirement SP-023 row not found"}
+
+    release = _blank(
+        {
+            "id": "SP-023",
+            "title": "Covering reuse + os ready",
+            "goal": "Make reuse the release lever without new modules or fake savings.",
+            "status": "done",
+            "kind": "execute",
+            "links": {"decisions": ["D-032"], "risks": [], "questions": []},
+            "verified": "subset pack hits; edit is a miss; freeze+yield on doctor --product; aegis os ready.",
+            "evidence": "git 7ff9fda; tests/test_reuse_and_surplus.py, tests/test_cursor_bridge.py, tests/test_master_os.py",
+            "started_ts": "2026-08-18T20:43:27+00:00",
+            "completed_ts": "2026-08-18T20:43:27+00:00",
+            "created_ts": "2026-08-18T20:43:27+00:00",
+            "updated_ts": "2026-08-18T20:43:27+00:00",
+        }
+    )
+    agency = _blank(
+        {
+            "id": "SP-024",
+            "title": "Agency modes, observability relay, sentinel capsule fields, memory mesh tiers",
+            "goal": "Add the bounded agency, relay, sentinel, and two-tier memory capabilities recorded in the canonical register.",
+            "status": "done",
+            "kind": "execute",
+            "verified": "commit b6afbda added the implementation and associated tests.",
+            "evidence": "git b6afbda; tests/test_memory_admit.py, tests/test_relay.py, tests/test_context_governor.py",
+            "started_ts": "2026-08-21T22:19:16+00:00",
+            "completed_ts": "2026-08-21T22:19:16+00:00",
+            "created_ts": "2026-08-21T22:19:16+00:00",
+            "updated_ts": "2026-08-21T22:19:16+00:00",
+        }
+    )
+    retirement = _blank({**retired, "id": "SP-025"})
+    audit = {
+        "kind": "sprint_reconciliation",
+        "recorded_at": _now(),
+        "reason": "approved SP-023 identity correction; preserve both histories",
+        "prior_row": retired,
+        "restored": [release, agency],
+        "renamed_to": retirement,
+    }
+    ensure_home()
+    with reconciliation_path().open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(audit, ensure_ascii=False) + "\n")
+    corrected = [row for row in rows if row is not retired] + [release, agency, retirement]
+    _write_all(corrected)
+    return {"ok": True, "audit_path": str(reconciliation_path()), "ids": ["SP-023", "SP-024", "SP-025"]}
 
 
 def _by_id(sid: str) -> Optional[Dict[str, Any]]:

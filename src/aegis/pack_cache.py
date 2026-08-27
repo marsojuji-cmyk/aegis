@@ -114,6 +114,7 @@ def save_pack(pack_id: str, payload: Dict[str, Any]) -> Path:
     ensure_home()
     path = pack_path(pack_id)
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _index_append(pack_id, payload)
     return path
 
 
@@ -151,6 +152,18 @@ def get_or_none(
             pass
         return primary, cached, meta
 
+    covered = covering_pack(canon, paths, targets=tgts)
+    if covered is not None:
+        kid, payload, cover_meta = covered
+        cover_meta["tried_keys"] = tried + [kid]
+        try:
+            from aegis.cache_optimizer import record_lookup
+
+            record_lookup(canon, hit=True, fallback_used=bool(cover_meta.get("fallback_used")))
+        except Exception:  # noqa: BLE001
+            pass
+        return kid, payload, cover_meta
+
     if allow_fallback and not tgts:
         # static + learned fallbacks (self-optimizing cache)
         try:
@@ -183,3 +196,158 @@ def get_or_none(
     except Exception:  # noqa: BLE001
         pass
     return primary, None, meta
+
+
+INDEX_CAP = 80
+
+
+def _resolve_files(paths: Sequence[str]) -> List[str]:
+    out: List[str] = []
+    seen = set()
+    for raw in paths or []:
+        p = Path(str(raw)).expanduser()
+        if not p.is_file():
+            continue
+        resolved = str(p.resolve())
+        if resolved not in seen:
+            seen.add(resolved)
+            out.append(resolved)
+    return out
+
+
+def attach_reuse_meta(
+    payload: Dict[str, Any],
+    paths: Sequence[str],
+    mode: str,
+    targets: Optional[Sequence[str]] = None,
+) -> Dict[str, Any]:
+    """Stamp hashes so later covering reuse can refuse stale bytes."""
+    resolved = _resolve_files(paths)
+    if not resolved:
+        for item in payload.get("bento_components") or []:
+            raw = str(item.get("path") or "")
+            if raw and Path(raw).is_file():
+                resolved.append(str(Path(raw).resolve()))
+        resolved = list(dict.fromkeys(resolved))
+    payload["path_set"] = resolved
+    payload["path_hashes"] = {p: file_hash(p) for p in resolved}
+    payload["canon_mode"] = normalize_mode(mode)
+    payload["cache_targets"] = sorted(
+        {t.strip() for t in (targets or []) if t and str(t).strip()}
+    )
+    return payload
+
+
+def _index_path() -> Path:
+    return packs_dir() / "index.jsonl"
+
+
+def _index_append(pack_id: str, payload: Dict[str, Any]) -> None:
+    paths = [str(p) for p in (payload.get("path_set") or []) if p]
+    hashes = payload.get("path_hashes") or {}
+    if not paths or not isinstance(hashes, dict):
+        return
+    entry = {
+        "pack_id": pack_id,
+        "mode": str(payload.get("canon_mode") or payload.get("mode") or "explore"),
+        "paths": paths,
+        "hashes": hashes,
+        "targets": list(payload.get("cache_targets") or []),
+    }
+    path = _index_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows: List[str] = []
+    if path.is_file():
+        try:
+            rows = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        except OSError:
+            rows = []
+    rows.append(json.dumps(entry, ensure_ascii=False))
+    rows = rows[-INDEX_CAP:]
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
+def _read_index() -> List[Dict[str, Any]]:
+    path = _index_path()
+    if not path.is_file():
+        return []
+    out: List[Dict[str, Any]] = []
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(row, dict) and row.get("pack_id"):
+                out.append(row)
+    except OSError:
+        return []
+    return out
+
+
+def _mode_covers(want: str, have: str) -> bool:
+    want_m = normalize_mode(want)
+    have_m = normalize_mode(have)
+    if want_m == "implement":
+        return have_m == "implement"
+    if want_m == "review":
+        return have_m in ("review", "explore")
+    return have_m == "explore"
+
+
+def _targets_match(want: Optional[Sequence[str]], have: Optional[Sequence[str]]) -> bool:
+    a = sorted({str(t).strip() for t in (want or []) if t and str(t).strip()})
+    b = sorted({str(t).strip() for t in (have or []) if t and str(t).strip()})
+    return a == b
+
+
+def _hashes_fresh(paths: Sequence[str], stored: Dict[str, Any]) -> bool:
+    if not stored:
+        return False
+    for p in paths:
+        got = stored.get(p) or stored.get(str(Path(p).resolve()))
+        try:
+            if not got or str(got) != file_hash(p):
+                return False
+        except OSError:
+            return False
+    return True
+
+
+def covering_pack(
+    mode: str,
+    paths: Sequence[str],
+    *,
+    targets: Optional[Sequence[str]] = None,
+) -> Optional[Tuple[str, Dict[str, Any], Dict[str, Any]]]:
+    """Reuse a prior pack whose path-set covers these files and whose hashes still match."""
+    want = _resolve_files(paths)
+    if not want:
+        return None
+    want_set = set(want)
+    for entry in reversed(_read_index()):
+        have_paths = [str(p) for p in (entry.get("paths") or []) if p]
+        if not want_set.issubset(set(have_paths)):
+            continue
+        if not _mode_covers(mode, str(entry.get("mode") or "explore")):
+            continue
+        if not _targets_match(targets, entry.get("targets")):
+            continue
+        hashes = entry.get("hashes") if isinstance(entry.get("hashes"), dict) else {}
+        if not _hashes_fresh(want, hashes):
+            continue
+        kid = str(entry.get("pack_id") or "")
+        payload = load_pack(kid)
+        if not payload:
+            continue
+        have_mode = normalize_mode(str(entry.get("mode") or "explore"))
+        meta = {
+            "canon_mode": normalize_mode(mode),
+            "fallback_used": have_mode != normalize_mode(mode),
+            "covering": True,
+            "tried_keys": [kid],
+        }
+        return kid, payload, meta
+    return None

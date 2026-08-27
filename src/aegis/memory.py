@@ -1,6 +1,7 @@
 """
-Cross-model memory — durable facts any provider run can read/write.
+Cross-model memory — ephemeral KV cache any provider run can read/write.
 
+Durable provenance records live in memory_records.jsonl via memory_admit.
 Stored under ~/.aegis/memory.jsonl.
 
 Production-hardened:
@@ -97,7 +98,7 @@ def remember(
     tags: Optional[List[str]] = None,
     weight: float = 1.0,
 ) -> Dict[str, Any]:
-    """Upsert a memory fact (last write wins per key+project)."""
+    """Upsert an ephemeral memory fact (last write wins per key+project)."""
     key = (key or "").strip()[:MAX_KEY_LEN]
     if not key:
         raise ValueError("memory key required")
@@ -216,19 +217,36 @@ def memory_context_block(
     *,
     project: str = "aegis",
     limit: int = 8,
+    include_durable: bool = True,
+    include_ephemeral: bool = True,
 ) -> str:
-    """Compact text block for pack/system injection (cross-model)."""
-    try:
-        hits = recall(task, project=project, limit=limit, bump_hits=True)
-    except Exception:  # noqa: BLE001
-        return ""
-    if not hits:
-        return ""
-    lines = ["[AEGIS MEMORY — cross-model]"]
-    for h in hits:
-        k = str(h.get("key") or "")[:80]
-        v = str(h.get("value") or "")[:200]
-        lines.append(f"- {k}: {v}")
+    """Compact text block for pack/system injection (cross-model mesh)."""
+    lines: List[str] = []
+    if include_durable:
+        try:
+            from aegis.memory_admit import search_durable
+
+            durable = search_durable(task, limit=max(1, limit // 2))
+            if durable:
+                lines.append("[AEGIS MEMORY — durable provenance]")
+                for h in durable:
+                    mid = str(h.get("id") or "")[:40]
+                    content = str(h.get("content") or "")[:200]
+                    est = str(h.get("evidence_status") or "")
+                    lines.append(f"- {mid} ({est}): {content}")
+        except Exception:  # noqa: BLE001
+            pass
+    if include_ephemeral:
+        try:
+            hits = recall(task, project=project, limit=limit, bump_hits=True)
+        except Exception:  # noqa: BLE001
+            hits = []
+        if hits:
+            lines.append("[AEGIS MEMORY — ephemeral cache]")
+            for h in hits:
+                k = str(h.get("key") or "")[:80]
+                v = str(h.get("value") or "")[:200]
+                lines.append(f"- {k}: {v}")
     return "\n".join(lines)
 
 
@@ -239,12 +257,20 @@ def memory_stats() -> Dict[str, Any]:
     for r in rows:
         p = str(r.get("project") or "aegis")
         projects[p] = projects.get(p, 0) + 1
-    return {
+    out = {
+        "tier": "ephemeral",
         "entries": len(rows),
         "projects": projects,
         "path": str(memory_path()),
         "max_entries": MAX_ENTRIES,
     }
+    try:
+        from aegis.memory_admit import record_stats
+
+        out["durable"] = record_stats()
+    except Exception:  # noqa: BLE001
+        pass
+    return out
 
 
 def auto_capture_from_run(

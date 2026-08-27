@@ -81,7 +81,21 @@ def legacy_import_flag() -> Path:
 
 
 def memory_path() -> Path:
+    """Ephemeral cross-model KV cache (M-012 inject tier)."""
     return aegis_home() / "memory.jsonl"
+
+
+def memory_records_path() -> Path:
+    """Durable provenance-bearing memory records (plate #06)."""
+    return aegis_home() / "memory_records.jsonl"
+
+
+def relay_export_dir() -> Path:
+    return aegis_home() / "relay_exports"
+
+
+def workflows_path() -> Path:
+    return aegis_home() / "workflows.json"
 
 
 def intel_state_path() -> Path:
@@ -172,3 +186,8 @@ def kernel_stats_path() -> Path:
 
 def backups_dir() -> Path:
     return aegis_home() / "backups"
+
+
+def close_clock_path() -> Path:
+    """14-day Path A operator-owner clock. Local JSON, not a CRM."""
+    return aegis_home() / "close_clock.json"

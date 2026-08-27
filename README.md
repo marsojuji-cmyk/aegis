@@ -1,4 +1,4 @@
-# Aegis 1.2.0
+# Aegis 1.3.1
 
 **Agent operating system** for AI coding work: kernel (process / memory / drivers / syscalls), portable data plane, frozen `/v1` API, honest yield proof.
 
@@ -12,6 +12,7 @@ Absolute Form: austere · aggressive on drift · protective reserve (≥80%).
 python3 -m pip install --user -e .
 python3 -m aegis os init
 python3 -m aegis doctor --product
+python3 -m aegis os ready
 python3 -m aegis os score
 ```
 
@@ -22,52 +23,36 @@ This-host extras (Cursor/Hermes/AGIS) remain optional. They are not required for
 ## Core loop
 
 ```text
-preflight → pack (quality) → receipt → output lane
-  → model/router → shrink/store/reuse → ledger → surplus/ideas
+pack once → reuse while bytes unchanged → land → ledger
 ```
+
+Covering reuse: a later pack of a **subset** of those files hits if the hashes still match. After you edit, the cache misses on purpose.
 
 ## Commands (high yield)
 
 ```bash
-# Pack / preflight
-aegis pack --task "…" --mode explore|implement path.py
-aegis preflight --task "…" --mode implement path.py
-
-# Cursor Composer
-aegis cursor --install
-aegis cursor --task "…" --mode implement path.py
+# Pack / reuse
+aegis pack --mode implement path.py
 aegis cursor --gate path.py
-aegis cursor --outputs
+aegis cursor --task "…" --mode implement path.py
 
-# Universal router (10×)
-aegis run --model mock|ollama|grok|claude|openai|antigravity --task "…" [files]
-aegis run --batch jobs.json --workers 16
-aegis serve --background --port 8787   # background router
-aegis daemon start|stop|status|restart
-aegis daemon install-login             # start at login (launchd)
-aegis daemon uninstall-login
-aegis app build|open                   # SwiftUI menu bar (ledger + daemon)
-aegis intel status|tick|forecast|usage|report   # Intelligence Layer (autonomous compound)
-aegis providers
+# Release gate
+aegis os ready
+aegis price quote
+aegis demo start
+aegis demo run src/aegis/pricing.py
+aegis demo status
+aegis doctor --product
+aegis decisions health
+aegis modules health
+aegis yield report
 
-# Wrappers (OpenAI / Anti-Gravity intercept)
-aegis wrap --provider openai --task "…" --prompt "…" [files]
-aegis wrap --provider antigravity --task "…" --prompt "…" --dry-run
-# Python: from aegis.wrappers import OpenAIWrapper, AntiGravityWrapper
-
-# Output reduce (thought→ship)
+# Land
 aegis land --body-file final.txt --summary "what shipped"
-aegis output-get out_<id>
 
 # Ops
-aegis os init|score|backup|restore|uninstall|bench
-aegis kernel status|ps|mem|drivers|pack
-aegis api spec|check
-aegis yield prove path.py | yield report
-aegis budget | surplus | doctor --product | langs | version
-aegis idea list | audit | invest
-aegis sprint seed | list | report | board
-aegis hermes search "query" | hermes resolve "note"
+aegis os init|score|backup|restore|uninstall|bench|ready
+aegis budget | surplus | version
 ```
 
 ## Data plane (`~/.aegis/`)
@@ -97,12 +82,12 @@ aegis hermes search "query" | hermes resolve "note"
 - Weekly cap: 1_000_000 processed tokens  
 - Reserve floor: 80% (invest freezes below)  
 - Reinvest: 20% of new savings → wish jar  
-- Pack cache: mode map + path-set (task does not bust reuse)  
-- Concurrent batch default: **16** (cap 32)  
-- Output reuse aim: **≥50%** pack hit rate (BUILD until met)
+- Pack cache: covering path-set + file hashes (task does not bust reuse; **edits do**)  
+- Concurrent batch default: **16** (cap 32) — frozen under throttle  
+- Pack reuse aim: **≥50%** hit rate (BUILD until met). Same files, unchanged bytes.
 
 ## Version
 
-**1.2.0** — Master Aegis product OS (`pyproject.toml` / `src/aegis/__init__.py`). Hermes plugin identity stays 1.0.0. `savings_percent` remains null without an admitted pair.
+**1.3.1** — Bounded autoscan: approved local/public sources, incremental fingerprints, reversible quarantine, explicit circuit recovery, and a calibration lock on public research. Local content stays local; outbound action remains unauthorized. ROI remains withheld until accepted outcomes and provider-observed incremental cost are matched.
 
 See [docs/EVOLUTION.md](docs/EVOLUTION.md) · [docs/ABSOLUTE.md](docs/ABSOLUTE.md) · [docs/FIELD.md](docs/FIELD.md)

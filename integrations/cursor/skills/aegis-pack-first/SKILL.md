@@ -14,8 +14,8 @@ Do this before any `Read` of a code file:
 python3 -m aegis cursor --gate PATH --mode implement
 ```
 
-- exit 0 / `action=reuse`: do **not** Read. Use `~/.aegis/cursor_last_context.md`.
-- exit 1 / `action=pack`: pack once, then edit from the bento only.
+- exit 0 / `action=reuse`: files are unchanged. Do **not** Read. Use `~/.aegis/cursor_last_context.md`.
+- exit 1 / `action=pack`: pack once (first time, or after an edit), then edit from the bento only.
 
 ```bash
 python3 -m aegis cursor --task "<intent>" --mode implement PATH

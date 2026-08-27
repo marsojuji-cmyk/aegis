@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -33,42 +34,34 @@ def _run(cmd: list[str], env: dict | None = None, timeout: int = 180) -> subproc
 
 
 def _oneshot(usage_path: Path, env: dict | None = None) -> dict:
-    cmd = [
-        str(HERMES),
-        "-z",
-        PROMPT,
-        "--usage-file",
-        str(usage_path),
-        "-t",
-        "file",
-        "--ignore-rules",
-        "--reasoning",
-        "none",
-    ]
-    model = os.environ.get("R012_MODEL", "").strip()
-    provider = os.environ.get("R012_PROVIDER", "").strip()
-    if model:
-        cmd.extend(["-m", model])
-    if provider:
-        cmd.extend(["--provider", provider])
+    _here = Path(__file__).resolve().parent
+    if str(_here) not in sys.path:
+        sys.path.insert(0, str(_here))
+    from r012_harness import run_probe
+
     t0 = time.perf_counter()
-    proc = _run(cmd, env=env, timeout=180)
+    if usage_path:
+        os.environ["R012_PROBE_USAGE"] = str(usage_path)
+    probe_body = run_probe(env=env, usage_path=usage_path if harness_mode() == "oneshot" else None)
     elapsed = round(time.perf_counter() - t0, 3)
-    usage = {}
-    if usage_path.is_file():
-        try:
-            usage = json.loads(usage_path.read_text())
-        except json.JSONDecodeError:
-            usage = {"parse_error": usage_path.read_text()[:500]}
-    stdout = (proc.stdout or "").strip()
+    usage = probe_body.get("usage") if isinstance(probe_body.get("usage"), dict) else {}
+    if usage_path and usage:
+        usage_path.write_text(json.dumps(usage, indent=2) + "\n", encoding="utf-8")
     return {
-        "exit_code": proc.returncode,
+        "exit_code": probe_body.get("exit_code"),
         "elapsed_s": elapsed,
-        "stdout": stdout,
-        "stderr": (proc.stderr or "").strip()[-1000:],
-        "success": False,  # set only after admit_run()
+        "stdout": probe_body.get("stdout") or "",
+        "stderr": probe_body.get("stderr") or "",
+        "success": False,
         "usage": usage,
+        "harness": probe_body.get("harness"),
+        "session_id": probe_body.get("session_id"),
     }
+
+
+def harness_mode() -> str:
+    raw = os.environ.get("R012_HARNESS", "agent").strip().lower()
+    return raw if raw in {"agent", "oneshot"} else "agent"
 
 
 def _guard_delta(before: list[str]) -> list[dict]:
@@ -195,7 +188,8 @@ def main() -> int:
         "model_requested": os.environ.get("R012_MODEL")
         or "config-default + --reasoning none",
         "provider_requested": os.environ.get("R012_PROVIDER") or "config-default",
-        "toolsets": "file",
+        "harness": harness_mode(),
+        "toolsets": os.environ.get("R012_TOOLSETS", "file"),
         "shadow_mode": True,
         "thresholds_changed": False,
         "allowed_domains_production_changed": False,

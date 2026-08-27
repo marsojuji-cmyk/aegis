@@ -16,6 +16,18 @@ HERMES_ROOT = Path.home() / ".hermes" / "hermes-agent"
 ALLOWED = "/tmp/aegis-hermes-allowed"
 
 
+def _gate_payload(value: Any) -> dict:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
 def _die(msg: str, **extra) -> int:
     print(json.dumps({"ok": False, "error": msg, **extra}, indent=2))
     return 2
@@ -110,7 +122,8 @@ def main() -> int:
     }
     if blocked:
         return _die("denied call invoked next_call (bypass)", report=report)
-    if not isinstance(denied, dict) or denied.get("blocked_by") != "aegis":
+    denied_payload = _gate_payload(denied)
+    if denied_payload.get("blocked_by") != "aegis":
         return _die("denied call did not return AEGIS deny payload", report=report)
 
     # 3. Middleware exception fail-open: a raising callback before the gate
@@ -138,21 +151,18 @@ def main() -> int:
             report=report,
         )
     mgr._middleware["tool_execution"] = original
+    after_raise_payload = _gate_payload(after_raise)
     report["exception_fail_open"] = {
-        "result": after_raise if not isinstance(after_raise, dict) else {
-            k: after_raise.get(k)
-            for k in ("ok", "blocked_by", "decision", "reason")
-        },
+        "result": after_raise_payload or after_raise,
         "next_call_invoked": bool(still_blocked),
-        "gate_still_denied": isinstance(after_raise, dict)
-        and after_raise.get("blocked_by") == "aegis",
+        "gate_still_denied": after_raise_payload.get("blocked_by") == "aegis",
     }
     if still_blocked:
         return _die(
             "exception path invoked next_call (Hermes fail-open bypassed gate)",
             report=report,
         )
-    if not (isinstance(after_raise, dict) and after_raise.get("blocked_by") == "aegis"):
+    if after_raise_payload.get("blocked_by") != "aegis":
         return _die(
             "after middleware exception, gate did not produce deny payload",
             report=report,
@@ -173,10 +183,11 @@ def main() -> int:
             traceback=traceback.format_exc(),
             report=report,
         )
+    garbage_payload = _gate_payload(garbage)
     report["garbage_input"] = {
         "raised": False,
-        "blocked_by": garbage.get("blocked_by") if isinstance(garbage, dict) else None,
-        "decision": garbage.get("decision") if isinstance(garbage, dict) else None,
+        "blocked_by": garbage_payload.get("blocked_by"),
+        "decision": garbage_payload.get("decision"),
     }
 
     report["ok"] = True

@@ -31,10 +31,10 @@ ledger spend  →  usage intel  →  waste signals
 
 | Key | Default | Role |
 |-----|---------|------|
-| `auto_tick` | true | Background compound ticks with router |
-| `auto_invest` | true | Fund top ROI ideas from surplus |
-| `auto_apply_fixes` | true | Nudge pack/output policy from signals |
-| `auto_memory` | true | Capture/inject cross-model memory |
+| `auto_tick` | false | Background compound ticks with router (opt-in) |
+| `auto_invest` | false | Fund top ROI ideas from surplus (frozen until thawed) |
+| `auto_apply_fixes` | false | Nudge pack/output policy from signals (opt-in) |
+| `auto_memory` | false | Capture/inject cross-model memory (opt-in; R-015 open) |
 | `intel_tick_seconds` | 300 | Tick interval while daemon runs |
 | `min_roi_grade_auto` | B | Minimum grade to auto-invest |
 | `cache_hit_threshold` | 30 | Forecast warn when cache hit % is below this |

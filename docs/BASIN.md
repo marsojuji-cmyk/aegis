@@ -70,7 +70,7 @@ Work phases map onto the existing loop in [`ABSOLUTE.md`](ABSOLUTE.md) / [`EVOLU
 
 **Act.** Multiple objectives (economy, environment, region, welfare). Leave accounts disaggregated. Values are not the expert’s province.
 
-**Move.** Show naive vs Aegis when it matters. `savings_percent` stays null until admitted. No fake single ROI.
+**Move.** Show naive vs Aegis when it matters. `savings_percent` is billed USD on matched pairs (D-040). Ledger reduction is not that number. No fake single ROI.
 
 **Failure.** One number that hides who pays the oxygen.
 

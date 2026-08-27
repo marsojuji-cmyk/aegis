@@ -54,7 +54,7 @@ def _do_pack(
     """Run product pack path; return payload + gate + exit semantics."""
     from aegis.bento import assemble
     from aegis.ledger import record
-    from aegis.pack_cache import get_or_none, pack_key, save_pack
+    from aegis.pack_cache import attach_reuse_meta, get_or_none, pack_key, save_pack
     from aegis.quality import evaluate_pack
     from aegis.receipt import write_last_receipt
 
@@ -93,6 +93,18 @@ def _do_pack(
             payload["ledger_entry"] = entry
             write_last_receipt(entry, payload)
     else:
+        from aegis.fund import pack_write_allowed
+
+        allowed, refuse_reason = pack_write_allowed(reuse=False)
+        if not allowed:
+            return {
+                "payload": {"reuse": False, "refused": True, "reason": refuse_reason},
+                "gate": None,
+                "pack_id": None,
+                "exit_code": 4,
+                "reuse": False,
+                "refuse_reason": refuse_reason,
+            }
         payload = assemble(
             core_task=task,
             code_snippets=snippets,
@@ -127,6 +139,7 @@ def _do_pack(
     gate = evaluate_pack(payload, mode=mode, targets=targets, sources=sources)
     payload["quality"] = gate.as_dict()
     if not dry_run and not reuse and not (strict and gate.strict_fail):
+        attach_reuse_meta(payload, path_list, mode, targets)
         save_pack(pack_id, payload)
 
     exit_code = 3 if (strict and gate.strict_fail) else 0
@@ -233,11 +246,15 @@ def run_preflight(
         except Exception as exc:  # noqa: BLE001
             errors.append(f"output lane: {exc}")
 
-    ok = pack_exit == 0 and reserve != "hard_stop"
-    exit_code = 0 if ok else (3 if pack_exit == 3 else 1)
-    if reserve == "hard_stop":
+    refuse_reason = result.get("refuse_reason")
+    ok = pack_exit == 0 and reserve != "hard_stop" and not refuse_reason
+    exit_code = 0 if ok else (4 if pack_exit == 4 or refuse_reason else (3 if pack_exit == 3 else 1))
+    if refuse_reason:
+        errors.append(refuse_reason)
+    elif reserve == "hard_stop":
         errors.append("reserve hard_stop — throttle agent fan-out")
-        exit_code = 4
+        if pack_exit == 0:
+            exit_code = 4
 
     receipt = load_last_receipt()
     return PreflightResult(

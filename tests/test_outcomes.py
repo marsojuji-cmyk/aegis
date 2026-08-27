@@ -148,6 +148,7 @@ def test_outcome_report_requires_ten_matched_tasks(tmp_path, monkeypatch):
         record_outcome(task_id=task_id, variant="baseline", accepted=True, elapsed_seconds=100, cost_usd=1.0, cost_status="observed", cost_source="hermes")
         record_outcome(task_id=task_id, variant="governed", accepted=True, elapsed_seconds=80, cost_usd=0.5, cost_status="observed", cost_source="hermes")
     assert outcome_report()["routing_authorized"] is True
+    assert outcome_report()["savings_percent"] == 50.0
 
 
 def test_outcome_report_requires_cost_reduction(tmp_path, monkeypatch):

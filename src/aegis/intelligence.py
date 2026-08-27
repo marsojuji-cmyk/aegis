@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
 from aegis.cache_optimizer import hit_rate, load_stats, optimize_cache
-from aegis.config import AegisConfig, load_config
+from aegis.config import AegisConfig, load_config, opt_in
 from aegis.forecast import predict_budget
 from aegis.fund import surplus_snapshot, sync_from_ledger
 from aegis.ideas import (
@@ -168,7 +168,7 @@ def _auto_queue_ideas(signals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def _auto_invest(cfg: AegisConfig, forecast: Dict[str, Any]) -> List[Dict[str, Any]]:
-    if not getattr(cfg, "auto_invest", True):
+    if not opt_in(cfg, "auto_invest"):
         return []
     # Absolute Form: freeze invest under projected hard_stop or unhealthy reserve
     if forecast.get("projected_signal") == "hard_stop":
@@ -540,7 +540,7 @@ def tick(
 
         # 5) queue ideas (sheddable)
         if _allowed("auto_queue_ideas") and (
-            getattr(cfg, "auto_apply_fixes", True) or getattr(cfg, "auto_invest", True)
+            opt_in(cfg, "auto_apply_fixes") or opt_in(cfg, "auto_invest")
         ):
             try:
                 created = _auto_queue_ideas(signals)
@@ -678,7 +678,7 @@ def tick(
             "state": state,
             "errors": errors,
             "autonomous": bool(
-                getattr(cfg, "auto_tick", True) and getattr(cfg, "auto_invest", True)
+                opt_in(cfg, "auto_tick") and opt_in(cfg, "auto_invest")
             ),
             "reserve_healthy": str(surplus.get("reserve_signal") or usage.get("reserve_signal"))
             == "ok",
@@ -716,10 +716,10 @@ def intel_status(cfg: Optional[AegisConfig] = None) -> Dict[str, Any]:
         "version_layer": "intelligence",
         "layer_version": INTEL_LAYER_VERSION,
         "config": {
-            "auto_tick": getattr(cfg, "auto_tick", True),
-            "auto_invest": getattr(cfg, "auto_invest", True),
-            "auto_apply_fixes": getattr(cfg, "auto_apply_fixes", True),
-            "auto_memory": getattr(cfg, "auto_memory", True),
+            "auto_tick": opt_in(cfg, "auto_tick"),
+            "auto_invest": opt_in(cfg, "auto_invest"),
+            "auto_apply_fixes": opt_in(cfg, "auto_apply_fixes"),
+            "auto_memory": opt_in(cfg, "auto_memory"),
             "intel_tick_seconds": getattr(cfg, "intel_tick_seconds", 300),
             "min_roi_grade_auto": getattr(cfg, "min_roi_grade_auto", "B"),
             "reinvest_rate": cfg.reinvest_rate,
@@ -768,7 +768,7 @@ def start_background_ticks(cfg: Optional[AegisConfig] = None) -> Dict[str, Any]:
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "message": f"config: {exc}"}
 
-        if not getattr(cfg, "auto_tick", True):
+        if not opt_in(cfg, "auto_tick"):
             return {"ok": False, "message": "auto_tick disabled in config"}
         if _bg_thread and _bg_thread.is_alive():
             return {"ok": True, "message": "already running"}

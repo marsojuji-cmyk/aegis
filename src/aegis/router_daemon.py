@@ -70,6 +70,20 @@ class AegisRouterHandler(BaseHTTPRequestHandler):
             st["daemon"] = dict(_DAEMON_STATE)
             self._write_json(200, st)
             return
+        if path in ("/v1/aegis/evidence-yield", "/evidence-yield"):
+            from aegis.evidence_yield import operational_projection
+
+            body = operational_projection()
+            body["version"] = __version__
+            self._write_json(200, body)
+            return
+        if path in ("/v1/aegis/autoscan", "/autoscan"):
+            from aegis.autoscan import status
+
+            body = status()
+            body["version"] = __version__
+            self._write_json(200, body)
+            return
         if path in ("/v1/aegis/budget", "/budget"):
             # Compact piggy-bank + surplus for menu bar / SwiftUI
             from aegis.fund import surplus_snapshot
@@ -242,6 +256,58 @@ class AegisRouterHandler(BaseHTTPRequestHandler):
                 self._write_json(500, {"ok": False, "error": str(exc)})
             return
 
+        if path in ("/v1/aegis/evidence-yield/govern", "/evidence-yield/govern"):
+            from aegis.evidence_yield import govern_claim
+
+            try:
+                result = govern_claim(
+                    candidate_id=body.get("candidate_id") or "",
+                    claim=body.get("claim") or "",
+                    evidence=body.get("evidence") or [],
+                    impact=body.get("impact") or "low",
+                    active_outcome=body.get("active_outcome") or "",
+                    provider=body.get("provider") or "",
+                    model=body.get("model") or "",
+                    request_id=body.get("request_id") or "",
+                )
+                self._write_json(200, {"ok": True, **result, "version": __version__})
+            except (TypeError, ValueError) as exc:
+                self._write_json(400, {"ok": False, "error": str(exc)})
+            return
+
+        if path in ("/v1/aegis/evidence-yield/outcome", "/evidence-yield/outcome"):
+            from aegis.evidence_yield import record_verified_outcome
+
+            try:
+                result = record_verified_outcome(
+                    candidate_id=body.get("candidate_id") or "",
+                    domain=body.get("domain") or "",
+                    verified=bool(body.get("verified")),
+                    accepted=bool(body.get("accepted")),
+                    review_minutes=float(body.get("review_minutes") or 0),
+                    correction_minutes=float(body.get("correction_minutes") or 0),
+                    cost_usd=body.get("cost_usd"),
+                    cost_status=body.get("cost_status") or "unknown",
+                    cost_source=body.get("cost_source") or "",
+                    request_id=body.get("request_id") or "",
+                )
+                self._write_json(200, {"ok": True, "outcome": result, "version": __version__})
+            except (TypeError, ValueError) as exc:
+                self._write_json(400, {"ok": False, "error": str(exc)})
+            return
+
+        if path in ("/v1/aegis/autoscan/control", "/autoscan/control"):
+            from aegis.autoscan import control
+
+            try:
+                payload = dict(body)
+                action = payload.pop("action", "")
+                result = control(action, **payload)
+                self._write_json(200, {"ok": True, **result, "version": __version__})
+            except (OSError, TypeError, ValueError) as exc:
+                self._write_json(400, {"ok": False, "error": str(exc), "version": __version__})
+            return
+
         if path in ("/v1/aegis/run", "/aegis/run"):
             _DAEMON_STATE["pipeline_runs"] = (
                 int(_DAEMON_STATE.get("pipeline_runs") or 0) + 1
@@ -408,6 +474,13 @@ def serve_forever(host: str = "127.0.0.1", port: int = 8787) -> None:
         _DAEMON_STATE["intel"] = start_background_ticks()
     except Exception as exc:  # noqa: BLE001
         _DAEMON_STATE["intel"] = {"ok": False, "error": str(exc)}
+
+    try:
+        from aegis.autoscan import start_background_autoscan
+
+        _DAEMON_STATE["autoscan"] = start_background_autoscan()
+    except Exception as exc:  # noqa: BLE001
+        _DAEMON_STATE["autoscan"] = {"ok": False, "error": str(exc)}
 
     try:
         httpd = serve(host, port)

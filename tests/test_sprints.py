@@ -12,9 +12,12 @@ from aegis.sprints import (
     list_sprints,
     render_board,
     report,
+    reconcile_known_history,
+    reconciliation_path,
     seed_board,
     start_sprint,
 )
+from aegis.paths import sprints_path
 
 
 @pytest.fixture()
@@ -66,6 +69,57 @@ def test_add_and_task(aegis_tmp):
     finished = complete_task(row["id"], added["task"]["id"], evidence="README.md")
     assert finished["ok"]
     assert finished["task"]["status"] == "done"
+
+
+def test_reconcile_known_history_preserves_prior_row(aegis_tmp):
+    prior = {
+        "id": "SP-023",
+        "title": "Retire Ether competing Hermes farm",
+        "goal": "approved retirement",
+        "status": "done",
+        "kind": "execute",
+        "blocked_by": [],
+        "links": {"decisions": [], "risks": [], "questions": []},
+        "tasks": [],
+        "verified": "retired",
+        "evidence": "receipt.json",
+    }
+    sprints_path().parent.mkdir(parents=True, exist_ok=True)
+    sprints_path().write_text(json.dumps(prior) + "\n", encoding="utf-8")
+
+    result = reconcile_known_history()
+
+    assert result["ok"] is True
+    rows = {row["id"]: row for row in list_sprints()}
+    assert rows["SP-023"]["title"] == "Covering reuse + os ready"
+    assert rows["SP-024"]["status"] == "done"
+    assert rows["SP-025"]["title"] == "Retire Ether competing Hermes farm"
+    audit = json.loads(reconciliation_path().read_text(encoding="utf-8"))
+    assert audit["prior_row"]["id"] == "SP-023"
+    assert audit["renamed_to"]["id"] == "SP-025"
+
+
+def test_cli_reconcile_idempotent(aegis_tmp, capsys):
+    prior = {
+        "id": "SP-023",
+        "title": "Retire Ether competing Hermes farm",
+        "goal": "approved retirement",
+        "status": "done",
+        "kind": "execute",
+        "blocked_by": [],
+        "links": {"decisions": [], "risks": [], "questions": []},
+        "tasks": [],
+        "verified": "retired",
+        "evidence": "receipt.json",
+    }
+    sprints_path().parent.mkdir(parents=True, exist_ok=True)
+    sprints_path().write_text(json.dumps(prior) + "\n", encoding="utf-8")
+
+    assert main(["sprint", "reconcile"]) == 0
+    capsys.readouterr()
+    assert main(["sprint", "reconcile"]) == 2
+    err = capsys.readouterr().err
+    assert "refusing reconciliation" in err
 
 
 def test_report_and_board(aegis_tmp, tmp_path):

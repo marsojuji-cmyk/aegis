@@ -226,6 +226,24 @@ def test_audit_record_creation(log_file):
     assert last["action"] == "block"
 
 
+def test_gate_deny_payload_is_json_string(log_file):
+    wrap = _wrapper(log_file)
+    denied = wrap.handle(_req("unknown_tool", args={"x": 1}))
+    assert denied["decision"] == "deny"
+
+    payload = hermes_tool_execution(
+        tool_name="unknown_tool",
+        args={"x": 1},
+        session_id="s1",
+        scope={"allowed_domains": [ALLOWED]},
+    )
+    assert isinstance(payload, str)
+    parsed = json.loads(payload)
+    assert parsed["blocked_by"] == "aegis"
+    assert parsed["decision"] == "deny"
+    assert isinstance(parsed["reason"], str)
+
+
 def test_no_direct_hermes_to_tool_bypass(log_file):
     ran = []
 
@@ -243,9 +261,11 @@ def test_no_direct_hermes_to_tool_bypass(log_file):
         scope={"allowed_domains": [ALLOWED]},
     )
     assert ran == []
-    assert denied["blocked_by"] == "aegis"
-    assert denied["decision"] == "deny"
-    assert "ok" in denied and denied["ok"] is False
+    assert isinstance(denied, str)
+    payload = json.loads(denied)
+    assert payload["blocked_by"] == "aegis"
+    assert payload["decision"] == "deny"
+    assert payload["ok"] is False
 
     # High-risk in enforce mode: next_call stays cold; review is explainable.
     wrap = _wrapper(log_file, shadow=False)

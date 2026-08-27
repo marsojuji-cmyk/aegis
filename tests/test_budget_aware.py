@@ -33,16 +33,16 @@ def test_hysteresis_holds_sticky_band(aegis_tmp):
 def test_plan_emergency_sheds_low_priority(aegis_tmp):
     plan = plan_for_band("emergency")
     assert "usage_intel" in plan["run"] or "usage_intel" in plan["throttle"]
-    assert "exploratory_enrichment" in plan["shed"]
+    assert "seed_ideas" in plan["shed"]
     assert should_run_module(plan, "surplus_sync") is True
-    assert should_run_module(plan, "exploratory_enrichment") is False
+    assert should_run_module(plan, "seed_ideas") is False
 
 
 def test_plan_adaptive_throttles(aegis_tmp):
     plan = plan_for_band("adaptive")
     assert plan["band"] == "adaptive"
     # enrichment modules should not be full-run
-    assert "exploratory_enrichment" in (plan["shed"] + plan["throttle"])
+    assert "seed_ideas" in (plan["shed"] + plan["throttle"])
 
 
 def test_simulate_dry_run(aegis_tmp):

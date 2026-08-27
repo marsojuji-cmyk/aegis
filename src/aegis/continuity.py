@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from aegis import __version__
-from aegis.config import AegisConfig, load_config
+from aegis.config import AegisConfig, load_config, opt_in
 from aegis.paths import continuity_dir, continuity_events_path, ensure_home
 
 _LOCK = threading.RLock()
@@ -83,8 +83,8 @@ def _gather_context(cfg: AegisConfig) -> Dict[str, Any]:
             "reserve_floor": cfg.reserve_floor,
             "budget_aware_mode": getattr(cfg, "budget_aware_mode", True),
             "burn_warning_multiplier": getattr(cfg, "burn_warning_multiplier", 1.25),
-            "auto_tick": getattr(cfg, "auto_tick", True),
-            "auto_invest": getattr(cfg, "auto_invest", True),
+            "auto_tick": opt_in(cfg, "auto_tick"),
+            "auto_invest": opt_in(cfg, "auto_invest"),
         },
     }
     try:

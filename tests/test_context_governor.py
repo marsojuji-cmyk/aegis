@@ -125,3 +125,22 @@ def test_state_capsule_mission_lock():
     assert capsule["drift_status"] in ("quarantine", "warn")
     assert capsule["drift_score"] > 0.3
 
+
+def test_sentinel_capsule_fields_optional(aegis_tmp):
+    capsule = state_capsule(
+        objective="resume verified work",
+        verified=["pytest green"],
+        next_action="run relay export",
+        owner="operator",
+        privacy_class="internal",
+        open_risks=["routing scope unchanged"],
+        evidence_refs=[{"kind": "path", "ref": "/tmp/evidence.json"}],
+        deletion_path="remove capsule file",
+    )
+    assert capsule["owner"] == "operator"
+    assert capsule["privacy_class"] == "internal"
+    assert capsule["open_risks"]
+    assert capsule["evidence_refs"]
+    assert capsule["deletion_path"] == "remove capsule file"
+    assert "recorded_at" in capsule
+

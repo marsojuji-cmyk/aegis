@@ -10,23 +10,23 @@ This file is the product boundary. Later install, API, docs, and acceptance work
 
 **Name:** AGIS/Aegis  
 **What it is:** a local agent operating system: process table, memory accounting, capability drivers, syscalls, portable `AEGIS_HOME`, frozen HTTP `/v1`, honest yield harness. Optional this-host extras: Cursor, Hermes, AGIS MUL.  
-**What it is not:** a host kernel (Darwin/Windows/Linux), a hosted service, or a claimed model-savings product.
+**What it is not:** a host kernel (Darwin/Windows/Linux), a hosted service, or a claimed *global* model-savings product. Tiny-chat billed USD (D-040) is in scope; implement-pack routing is not.
 
-**Problem:** wasted context and unproven spend. The product packs, reuses, meters, gates, and retrieves with receipts — it does not grow autonomy or claim `savings_percent` without an admitted pair.
+**Problem:** wasted context and unproven spend. The product packs, reuses, meters, gates, and retrieves with receipts. `savings_percent` is observed billed USD on `matched_provider_pairs` (D-040). It is not ledger `chars/4`. Implement packs are not routed.
 
 **Operator:** one human per `AEGIS_HOME` (or `$AEGIS_USER` namespace). Local-first. Second machine via `pip install -e .` + `aegis os init`.
 
 ## Minimum successful workflow
 
 1. `aegis os init` (portable home + MANIFEST schema 2).
-2. Prepare or reuse a context pack (`aegis kernel pack` or `aegis pack`).
+2. Pack the **same files** until they change (`aegis pack` / `aegis cursor --gate`). Covering reuse hits only when hashes still match. After an edit, miss is correct — pack again.
 3. Apply budget and reserve policy (invest is a kernel syscall; frozen on throttle/hard_stop).
 4. Land output through the output store.
-5. Start or checkpoint continuity.
+5. Start or checkpoint continuity from the pack, not from chat history.
 6. Route Hermes actions through `aegis-gate` when Hermes is present.
 7. Search the canonical AGIS MUL corpus lexically when pinned.
 8. Emit a receipt naming mode, root, pack reuse, budget signal, and gate result.
-9. `aegis os score` and `aegis yield prove` — yield stays labeled `counterfactual_chars4`.
+9. `aegis os ready` then `aegis os score` and `aegis yield prove` — yield stays labeled `counterfactual_chars4`.
 
 ## In scope
 
@@ -53,13 +53,13 @@ This file is the product boundary. Later install, API, docs, and acceptance work
 1. Embeddings and semantic search
 2. Embedding-target resolution (unresolved wikilinks stay unresolved)
 3. Semantic packets and swarm runtime
-4. Unbounded MUL graph growth (D-030 named 20-note set only)
+4. Unbounded MUL graph growth (D-030 named 20-note factory-OS set; D-033/D-034 named 32-note set including research-log and provenance-classification clusters only)
 5. `memory.write` as Aegis memory
 6. Auto-invest
 7. Auto-tick
 8. Parallel fan-out while reserve signal is `throttle`
 9. Encoder (Q-013 locked-observe)
-10. `savings_percent` claims (ledger “saved” tokens are local counterfactual only)
+10. Global model routing and implement-pack routing. Tiny-chat explore/review (D-040) may swap `deepseek-v4-pro` → `gpt-5.4-nano`. `savings_percent` is billed USD on `matched_provider_pairs` only — not ledger `chars/4`.
 11. Hosted / cloud processing
 12. Consumer marketplace / SaaS tenancy
 13. Host kernel / drivers / process isolation of the machine OS
@@ -95,7 +95,7 @@ Do not treat Documents Labs or the empty default root as Hermes product data.
 
 ## Release classification
 
-**Local program.** `aegis os init` + `aegis doctor --product` is the second-machine floor. Hermes/AGIS retrieval remains optional and this-host pin dependent.
+**Local program.** `aegis os init` + `aegis doctor --product` + `aegis os ready` is the second-machine floor. Hermes/AGIS retrieval remains optional and this-host pin dependent.
 
 Hosted SaaS, consumer marketplace, and host-kernel replacement are out of scope.
 

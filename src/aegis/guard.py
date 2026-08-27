@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
+import hashlib
 import json
 import time
 from dataclasses import dataclass
@@ -14,12 +15,70 @@ import sys
 from typing import Any, Callable, Dict, List, Optional
 
 from aegis.config import AegisConfig
+from aegis.mission_lock import evaluate as evaluate_mission_lock, parse_domains
 from pathlib import Path
 
 _ACTIVE_GUARD: Optional[AegisGuard] = None
 
 # Persistent guard log path (JSONL format)
 GUARD_LOG_PATH = Path.home() / ".aegis" / "guard_log.jsonl"
+
+
+def rotate_guard_log(log_path: Path, if_larger_mb: Optional[float] = None) -> Dict[str, Any]:
+    """Rotate a guard JSONL log to a timestamped archive plus manifest.
+
+    Writers open/append/close per event (see _persist_decision), so the live
+    log is recreated on the next write — no daemon restart required.
+    """
+    result: Dict[str, Any] = {"rotated": False, "log_path": str(log_path)}
+    if not log_path.exists() or log_path.stat().st_size == 0:
+        result["reason"] = "empty_log"
+        return result
+
+    size_bytes = log_path.stat().st_size
+    result["size_bytes"] = size_bytes
+    if if_larger_mb is not None and size_bytes < if_larger_mb * 1024 * 1024:
+        result["reason"] = "below_threshold"
+        return result
+
+    sha = hashlib.sha256()
+    lines = 0
+    with open(log_path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            sha.update(chunk)
+            lines += chunk.count(b"\n")
+
+    ts = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+    n = 1
+    while True:
+        suffix = "" if n == 1 else f"-{n}"
+        archive = log_path.with_name(f"guard_log.v2-archive-{ts}{suffix}.jsonl")
+        manifest_path = log_path.with_name(f"guard_log.v2-split-{ts}{suffix}.manifest.json")
+        if not archive.exists() and not manifest_path.exists():
+            break
+        n += 1
+
+    os.replace(log_path, archive)
+    manifest = {
+        "source_sha256": sha.hexdigest(),
+        "source_lines": lines,
+        "source_bytes": size_bytes,
+        "archive_file": archive.name,
+        "rotation_reason": "aegis guard rotate",
+        "timestamp_utc": ts,
+        "tool_version": "1.0",
+        "paused_concurrent_writers": False,
+        "writer_model": "per-event open/append/close; fresh live log auto-created on next write",
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+    result.update({
+        "rotated": True,
+        "archive": str(archive),
+        "manifest": str(manifest_path),
+        "source_lines": lines,
+        "source_sha256": manifest["source_sha256"],
+    })
+    return result
 
 
 class AegisGuardError(Exception):
@@ -66,11 +125,7 @@ class AegisGuard:
         self.config = config
         self.guard_context = context or AegisGuardContext()
         self.state = AegisState()
-        self._allowed_domains: List[str] = [
-            d.strip()
-            for d in config.guard_allowed_domains.split(",")
-            if d.strip()
-        ]
+        self._allowed_domains: List[str] = parse_domains(config.guard_allowed_domains)
         
         # Register in global state for CLI inspection
         global _ACTIVE_GUARD
@@ -186,27 +241,47 @@ class AegisGuard:
         self._record_decision(rule="loop", action="allow", status="ok", reason=f"Tool {tool_name} not looping")
 
     def _check_mission_lock(self, tool_name: str, kwargs: Dict[str, Any]) -> None:
-        """Rule 3: Mission Lock Enforcement."""
-        if not self._allowed_domains:
-            return  # No restrictions configured
-
-        if "filepath" in kwargs:
-            path = str(kwargs["filepath"])
-            if not any(path.startswith(p) for p in self._allowed_domains):
-                msg = f"Path '{path}' outside allowed mission boundaries."
-                self._record_decision(rule="mission", action="block", status="halt", reason=msg, input_excerpt=path)
-                if not self.config.guard_shadow_mode:
-                    raise AegisGuardError(f"[AEGIS BLOCK - RULE 3 (MISSION LOCK)]: Path access denied. {msg}")
-
-        if "url" in kwargs:
-            url = str(kwargs["url"])
-            if not any(domain in url for domain in self._allowed_domains):
-                msg = f"URL '{url}' outside allowed mission boundaries."
-                self._record_decision(rule="mission", action="block", status="halt", reason=msg, input_excerpt=url)
-                if not self.config.guard_shadow_mode:
-                    raise AegisGuardError(f"[AEGIS BLOCK - RULE 3 (MISSION LOCK)]: URL access denied. {msg}")
-
-        self._record_decision(rule="mission", action="allow", status="ok", reason="Within allowed domains")
+        """Rule 3: Mission Lock Enforcement (shared with HermesWrapper)."""
+        require = bool(getattr(self.config, "guard_require_mission_lock", False))
+        mission = str(getattr(self.config, "guard_mission", "") or "")
+        verdict = evaluate_mission_lock(
+            self._allowed_domains,
+            kwargs,
+            mission=mission,
+            tool_name=tool_name,
+            require=require,
+        )
+        excerpt = str(list(kwargs.values())[:1])[:120]
+        if not verdict.allowed:
+            self._record_decision(
+                rule="mission",
+                action="block",
+                status="halt",
+                reason=verdict.reason,
+                score=verdict.drift_score,
+                input_excerpt=excerpt,
+            )
+            if not self.config.guard_shadow_mode:
+                raise AegisGuardError(
+                    f"[AEGIS BLOCK - RULE 3 (MISSION LOCK)]: {verdict.reason}"
+                )
+            return
+        self._record_decision(
+            rule="mission",
+            action="allow" if verdict.drift_status != "quarantine" else "warn",
+            status="ok" if verdict.allowed else "halt",
+            reason=verdict.reason,
+            score=verdict.drift_score,
+            input_excerpt=excerpt,
+        )
+        if (
+            require
+            and verdict.drift_status == "quarantine"
+            and not self.config.guard_shadow_mode
+        ):
+            raise AegisGuardError(
+                f"[AEGIS BLOCK - RULE 3 (MISSION LOCK)]: {verdict.reason}"
+            )
 
     def evaluate_signal(self, text: str, keywords: List[str]) -> float:
         """Calculate a deterministic signal score (0.0 to 1.0) for a block of text."""
@@ -297,10 +372,76 @@ class AegisGuard:
             return raw_output
         return pruned_text
 
+    def _check_memory_provenance(self, tool_name: str, kwargs: Dict[str, Any]) -> None:
+        """Rule 4: durable memory writes require admitted record id when enforced."""
+        if not bool(getattr(self.config, "guard_require_memory_provenance", False)):
+            return
+        if tool_name != "memory" and "memory_record_id" not in kwargs:
+            return
+        record_id = str(kwargs.get("memory_record_id") or kwargs.get("record_id") or "")
+        if not record_id:
+            msg = "durable memory write requires memory_record_id from aegis memory admit"
+            self._record_decision(rule="memory", action="block", status="halt", reason=msg)
+            if not self.config.guard_shadow_mode:
+                raise AegisGuardError(f"[AEGIS BLOCK - RULE 4 (MEMORY)]: {msg}")
+            return
+        try:
+            from aegis.memory_admit import list_records
+
+            known = {str(r.get("id")) for r in list_records(limit=500)}
+            if record_id not in known:
+                msg = f"memory_record_id not admitted: {record_id}"
+                self._record_decision(rule="memory", action="block", status="halt", reason=msg)
+                if not self.config.guard_shadow_mode:
+                    raise AegisGuardError(f"[AEGIS BLOCK - RULE 4 (MEMORY)]: {msg}")
+                return
+        except Exception as exc:
+            msg = f"memory provenance check failed: {type(exc).__name__}"
+            self._record_decision(rule="memory", action="block", status="halt", reason=msg)
+            if not self.config.guard_shadow_mode:
+                raise AegisGuardError(f"[AEGIS BLOCK - RULE 4 (MEMORY)]: {msg}")
+            return
+        self._record_decision(rule="memory", action="allow", status="ok", reason="admitted record id present")
+
+    def _check_agency(self, tool_name: str, kwargs: Dict[str, Any]) -> None:
+        """Rule 5: bounded agency mode gate."""
+        from aegis.agency import gate_decision, normalize_mode
+        from aegis.wrappers.hermes_wrapper import classify_tool
+
+        capability, risk = classify_tool(tool_name)
+        if not capability:
+            self._record_decision(
+                rule="agency",
+                action="allow",
+                status="ok",
+                reason="tool not in Hermes catalog; agency check skipped",
+            )
+            return
+        mode = normalize_mode(getattr(self.config, "guard_agency_mode", "assistive"))
+        durable = tool_name == "memory" and bool(
+            getattr(self.config, "guard_require_memory_provenance", False)
+        )
+        decision, reason = gate_decision(
+            mode, capability, risk, durable_memory=durable,
+        )
+        if decision == "allow":
+            self._record_decision(rule="agency", action="allow", status="ok", reason=reason)
+            return
+        if decision == "require-review":
+            self._record_decision(rule="agency", action="block", status="halt", reason=reason)
+            if not self.config.guard_shadow_mode:
+                raise AegisGuardError(f"[AEGIS BLOCK - RULE 5 (AGENCY)]: {reason}")
+            return
+        self._record_decision(rule="agency", action="block", status="halt", reason=reason)
+        if not self.config.guard_shadow_mode:
+            raise AegisGuardError(f"[AEGIS BLOCK - RULE 5 (AGENCY)]: {reason}")
+
     def inspect_and_filter(self, tool_name: str, func: Callable[..., Any], *args: Any, **kwargs: Any) -> str:
         """Execute the tool through the AEGIS middleware."""
         self._check_budget_and_velocity(tool_name)
         self._check_mission_lock(tool_name, kwargs)
+        self._check_memory_provenance(tool_name, kwargs)
+        self._check_agency(tool_name, kwargs)
         self._check_loops(tool_name, args, kwargs)
 
         self.state.total_calls += 1

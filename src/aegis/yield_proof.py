@@ -1,7 +1,7 @@
 """Honest economic-yield harness.
 
 Fixture naive-vs-pack is labeled counterfactual_chars4.
-savings_percent stays null unless an admitted Hermes pair exists.
+savings_percent is observed billed USD on matched_provider_pairs, else null.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ def _naive_chars(paths: Sequence[str]) -> int:
 
 def prove(paths: Sequence[str], *, task: str = "yield-prove") -> Dict[str, Any]:
     from aegis.bento import assemble
-    from aegis.pack_cache import get_or_none, save_pack
+    from aegis.pack_cache import attach_reuse_meta, get_or_none, save_pack
 
     files = [str(Path(p).expanduser().resolve()) for p in paths if Path(p).is_file()]
     if not files:
@@ -61,6 +61,7 @@ def prove(paths: Sequence[str], *, task: str = "yield-prove") -> Dict[str, Any]:
     pack_id, cached, meta = get_or_none("explore", files, task)
     if cached is None:
         payload = assemble(core_task=task, code_snippets=snippets, mode="explore")
+        attach_reuse_meta(payload, files, "explore")
         save_pack(pack_id, payload)
         reuse = False
     else:
@@ -147,16 +148,105 @@ def bench(paths: Sequence[str], *, rounds: int = 12, task: str = "bench") -> Dic
     }
 
 
+def _mean(values: List[float]) -> float | None:
+    if not values:
+        return None
+    return round(sum(values) / float(len(values)), 6)
+
+
+def _observed_usd(row: Dict[str, Any]) -> float | None:
+    from aegis.outcomes import OBSERVED_COST_STATUSES, UNTRUSTED_ROUTING_COST_SOURCES
+
+    source = str(row.get("cost_source") or "").strip().lower()
+    if row.get("cost_status") not in OBSERVED_COST_STATUSES:
+        return None
+    if not source or source in UNTRUSTED_ROUTING_COST_SOURCES:
+        return None
+    usd = row.get("cost_usd")
+    if not isinstance(usd, (int, float)):
+        return None
+    return float(usd)
+
+
+def billed_pair_snapshot() -> Dict[str, Any]:
+    """Live matched-pair dollars. savings_percent is observed USD, not AA ranks."""
+    from aegis.outcomes import load_outcome_evidence, outcome_report
+    from aegis.receipt_collect import PAIR_WORKFLOW
+
+    report = outcome_report(workflow=PAIR_WORKFLOW)
+    grouped: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    for row in load_outcome_evidence()["rows"]:
+        if row.get("workflow") != PAIR_WORKFLOW:
+            continue
+        grouped.setdefault(str(row["task_id"]), {})[str(row["variant"])] = row
+    baseline_usd: List[float] = []
+    governed_usd: List[float] = []
+    for pair in grouped.values():
+        if "baseline" not in pair or "governed" not in pair:
+            continue
+        base = _observed_usd(pair["baseline"])
+        gov = _observed_usd(pair["governed"])
+        if base is None or gov is None:
+            continue
+        baseline_usd.append(base)
+        governed_usd.append(gov)
+    paired = int(report.get("paired_tasks") or 0)
+    return {
+        "workflow": PAIR_WORKFLOW,
+        "paired_tasks": paired,
+        "observed_cost_pairs": int(report.get("observed_cost_pairs") or 0),
+        "cost_comparison_complete": bool(report.get("cost_comparison_complete")),
+        "baseline_mean_usd": _mean(baseline_usd),
+        "governed_mean_usd": _mean(governed_usd),
+        "total_cost_usd_saved": report.get("total_cost_usd_saved"),
+        "savings_percent": report.get("savings_percent"),
+        "mean_seconds_saved": report.get("mean_seconds_saved"),
+        "acceptance_delta": report.get("acceptance_delta"),
+        "outcome_decision": report.get("decision"),
+        "routing_authorized": bool(report.get("routing_authorized")),
+        "routing_scope": "tiny_chat" if report.get("routing_authorized") else "off",
+    }
+
+
+def yield_is_honest(yld: Dict[str, Any]) -> bool:
+    """True when savings_percent is absent or matches billed USD math."""
+    pct = yld.get("savings_percent")
+    billed = yld.get("billed_pairs") or {}
+    billed_pct = billed.get("savings_percent")
+    if pct is None:
+        return billed_pct is None or int(billed.get("observed_cost_pairs") or 0) == 0
+    if billed_pct is None:
+        return False
+    try:
+        return abs(float(pct) - float(billed_pct)) < 0.15
+    except (TypeError, ValueError):
+        return False
+
+
 def yield_report() -> Dict[str, Any]:
     from aegis.ledger import generate_report
+    from aegis.routing import workflow_compare
 
     report = generate_report()
+    billed = billed_pair_snapshot()
+    saved = int(report.get("total_tokens_saved") or 0)
+    consumed = int(report.get("total_tokens_consumed") or 0)
+    reduction = report.get("overall_token_reduction_percent")
+    reuse = report.get("reuse_hit_rate_percent")
+    compare = workflow_compare()
     return {
         "ok": True,
         "accounting": ACCOUNTING,
-        "savings_percent": None,
+        "savings_percent": billed.get("savings_percent"),
+        "savings_percent_accounting": "observed_billed_usd" if billed.get("savings_percent") is not None else None,
         "admitted_pair": admitted_pair_present(),
-        "ledger_tokens_saved_local": report.get("total_tokens_saved"),
-        "reuse_hit_rate": report.get("reuse_hit_rate_percent"),
-        "note": "ledger saved tokens are local counterfactual unless admitted_pair",
+        "ledger_tokens_saved_local": saved,
+        "ledger_tokens_consumed": consumed,
+        "ledger_reduction_percent_local": 0.0 if reduction is None else float(reduction),
+        "reuse_hit_rate": 0.0 if reuse is None else float(reuse),
+        "billed_pairs": billed,
+        "workflow_compare": compare,
+        "routing_authorized": bool(billed.get("routing_authorized")),
+        "routing_scope": billed.get("routing_scope") or "off",
+        "note": "savings_percent is billed USD on matched_provider_pairs. ledger reduction is chars/4 counterfactual. implement packs are not routed.",
     }

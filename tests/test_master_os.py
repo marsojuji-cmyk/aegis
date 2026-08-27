@@ -137,6 +137,18 @@ def test_cli_os_score_and_doctor_product(aegis_tmp):
     assert card["composite"] >= 9.0
 
 
+def test_product_floor_freeze_and_honest_yield(aegis_tmp):
+    from aegis.doctor import doctor_report
+    from aegis.portable import init_home
+
+    init_home()
+    report = doctor_report()
+    by = {c["name"]: c for c in report["checks"]}
+    assert by["freeze_autonomy"]["pass"] is True
+    assert by["yield_honest"]["pass"] is True
+    assert report["product_ready"] is True
+
+
 def test_daemon_spec_kernel_yield(aegis_tmp):
     import urllib.request
 
@@ -148,17 +160,25 @@ def test_daemon_spec_kernel_yield(aegis_tmp):
             ("/v1/aegis/spec", "endpoints"),
             ("/v1/aegis/kernel", "kernel"),
             ("/v1/aegis/yield", "yield"),
+            ("/v1/aegis/evidence-yield", "evidence_health"),
+            ("/v1/aegis/autoscan", "approved_sources"),
         ):
             with urllib.request.urlopen(f"http://127.0.0.1:18797{path}", timeout=5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
             assert data.get("ok") is True
             assert key in data or key in (data.get("yield") or {})
-            if path.endswith("/yield"):
+            if path == "/v1/aegis/yield":
                 assert data["yield"]["savings_percent"] is None
+                assert isinstance(data["yield"]["ledger_tokens_saved_local"], int)
+                assert "billed_pairs" in data["yield"]
             if path.endswith("/spec"):
                 assert check_payload("GET /v1/aegis/spec", data)["ok"] is True
             if path.endswith("/kernel"):
                 assert check_payload("GET /v1/aegis/kernel", data)["ok"] is True
+            if path.endswith("/evidence-yield"):
+                assert check_payload("GET /v1/aegis/evidence-yield", data)["ok"] is True
+            if path.endswith("/autoscan"):
+                assert check_payload("GET /v1/aegis/autoscan", data)["ok"] is True
     finally:
         httpd.shutdown()
         httpd.server_close()

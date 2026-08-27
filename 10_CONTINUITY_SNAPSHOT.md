@@ -458,3 +458,38 @@ savings_percent: null
 
 - SP-010..SP-014 remain parked/blocked. No pair, encoder, capsule pack_id, or memory-scope change.
 
+---
+
+# Continuity addendum — 2026-08-27 SP-026 sprint ledger reconciliation
+
+status: verified
+action: SP-023/024/025 identity correction + setup.py 1.3.1 + `aegis sprint reconcile` CLI
+artifact: `src/aegis/sprints.py`, `src/aegis/cli.py`, `tests/test_sprints.py`, `05_SPRINT_BOARD.md`, `01_CANONICAL_REGISTER.md`, `setup.py`
+timestamp: 2026-08-27
+shadow_mode: on (D-011 unchanged)
+production_guard_allowed_domains: unchanged
+savings_percent: null (admitted=False)
+
+## Verified (Evidence Verifier run 2026-08-27)
+
+- `python3 -m pytest tests/test_sprints.py -q` → 8 passed
+- `python3 -m pytest -q` → 444 passed
+- `python3 -m aegis --version` → 1.3.1
+- `python3 -m aegis doctor` → v1.3.1 ready
+- `python3 -m aegis sprint report` → SP-023 Covering reuse, SP-024 Agency modes, SP-025 Ether retirement
+- Live `~/.aegis/sprints.jsonl` reconciled; audit at `~/.aegis/sprint_reconciliations.jsonl`
+- `reconcile_known_history()` idempotent — refuses when SP-024/025 exist
+- `aegis sprint reconcile` CLI wired
+
+## Budget / reuse (measured, not claimed)
+
+- Reserve: hard_stop (~35% remaining)
+- Reuse: 8.9% hit rate (target ≥50%, first milestone 20%)
+- Operate E-001 + R-001: pack-first, reuse=hit, land outputs; no parallel agents or new modules
+
+## Not done
+
+- SP-010/011/012/014 remain parked/blocked (Marc approval required for thaw/auth)
+- Encoder, implement-pack routing, agent fan-out — deferred
+- Reserve recovery — outcome to measure weekly, not a coding sprint
+

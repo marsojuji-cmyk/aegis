@@ -1,0 +1,30 @@
+{
+  "schema": "aegis.genuine-review.v1",
+  "measurement_class": "matched_human_pending",
+  "icp": "Knowledge-intensive teams publicly using AI across workflows, tools, or internal systems",
+  "offer": "AI Continuity & Workflow Yield Diagnostic",
+  "observed_at": "2026-08-24",
+  "terms": {"outreach_authorized": false, "human_labels_complete": false, "source_independence": "single_publisher_unless_noted"},
+  "cases": [
+    {"case_id":"genuine-01","organization":"Stampli","claim":"Stampli uses ChatGPT Work and Codex to connect product context, meeting notes, decisions, and messaging guidelines in repeatable workflows.","source_url":"https://openai.com/index/stampli/","human_label":null},
+    {"case_id":"genuine-02","organization":"NVIDIA","claim":"NVIDIA teams use ChatGPT Work to organize, automate, and scale recurring operational and knowledge workflows.","source_url":"https://openai.com/index/nvidia/chatgpt-work/","human_label":null},
+    {"case_id":"genuine-03","organization":"Asana","claim":"Asana uses Codex agents for large codebase changes with engineers reviewing proposed changes.","source_url":"https://openai.com/index/asana/","human_label":null},
+    {"case_id":"genuine-04","organization":"RingCentral","claim":"RingCentral uses ChatGPT Work and Codex across engineering and operational intelligence workflows.","source_url":"https://openai.com/index/ringcentral/","human_label":null},
+    {"case_id":"genuine-05","organization":"Virgin Atlantic","claim":"Virgin Atlantic uses ChatGPT Work in customer-journey workflows.","source_url":"https://openai.com/index/virgin-atlantic/chatgpt-work/","human_label":null},
+    {"case_id":"genuine-06","organization":"Zapier","claim":"Zapier uses ChatGPT Work in core marketing processes.","source_url":"https://openai.com/index/zapier/","human_label":null},
+    {"case_id":"genuine-07","organization":"HSP GRUPPE","claim":"HSP GRUPPE uses OpenAI tools to build AI capabilities for tax-advisory work.","source_url":"https://openai.com/index/hsp-gruppe/","human_label":null},
+    {"case_id":"genuine-08","organization":"Univé","claim":"Univé is building an AI-ready workforce with OpenAI tools.","source_url":"https://openai.com/index/unive/","human_label":null},
+    {"case_id":"genuine-09","organization":"Replit","claim":"Replit uses OpenAI models in software-creation workflows.","source_url":"https://openai.com/business/customer-stories/","human_label":null},
+    {"case_id":"genuine-10","organization":"Model ML","claim":"Model ML uses OpenAI models to complete finance work more efficiently.","source_url":"https://openai.com/business/customer-stories/","human_label":null},
+    {"case_id":"genuine-11","organization":"Circles","claim":"Circles uses OpenAI technology for telecommunications personalization workflows.","source_url":"https://openai.com/business/customer-stories/","human_label":null},
+    {"case_id":"genuine-12","organization":"avatarin","claim":"avatarin built a continuously available retail agent using OpenAI realtime technology.","source_url":"https://openai.com/business/customer-stories/","human_label":null},
+    {"case_id":"genuine-13","organization":"Moderna","claim":"Moderna uses ChatGPT Enterprise to extract, draft, cross-reference, and flag issues in Target Product Profile workflows.","source_url":"https://openai.com/business/guides-and-resources/the-state-of-enterprise-ai-2025-report/","human_label":null},
+    {"case_id":"genuine-14","organization":"BBVA","claim":"BBVA uses thousands of custom GPTs as persistent workflow tools.","source_url":"https://openai.com/business/guides-and-resources/the-state-of-enterprise-ai-2025-report/","human_label":null},
+    {"case_id":"genuine-15","organization":"Cisco","claim":"Cisco rolled out Codex in engineering workflows.","source_url":"https://openai.com/index/1-million-businesses-putting-ai-to-work/","human_label":null},
+    {"case_id":"genuine-16","organization":"Carlyle","claim":"Carlyle uses an evaluation platform for a multi-agent due-diligence framework.","source_url":"https://openai.com/index/1-million-businesses-putting-ai-to-work/","human_label":null},
+    {"case_id":"genuine-17","organization":"Indeed","claim":"Indeed uses OpenAI APIs in its Invite to Apply workflow.","source_url":"https://openai.com/index/1-million-businesses-putting-ai-to-work/","human_label":null},
+    {"case_id":"genuine-18","organization":"Lowe's","claim":"Lowe's uses an OpenAI-powered in-store guidance application across its stores.","source_url":"https://openai.com/index/1-million-businesses-putting-ai-to-work/","human_label":null},
+    {"case_id":"genuine-19","organization":"Intercom","claim":"Intercom uses OpenAI as the foundation of its Fin customer-service agent.","source_url":"https://openai.com/index/1-million-businesses-putting-ai-to-work/","human_label":null},
+    {"case_id":"genuine-20","organization":"Databricks","claim":"Databricks integrates OpenAI intelligence with enterprise data for agent workflows.","source_url":"https://openai.com/index/1-million-businesses-putting-ai-to-work/","human_label":null}
+  ]
+}

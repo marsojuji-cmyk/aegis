@@ -27,13 +27,12 @@ def test_build_plist_shape(aegis_tmp):
     assert pl["RunAtLoad"] is True
     assert pl["KeepAlive"] is True
     args = pl["ProgramArguments"]
-    assert "-m" in args
-    assert "aegis" in args
-    assert "serve" in args
-    assert "--foreground" in args
-    assert "--port" in args
+    assert args[0] == "/bin/bash"
+    assert args[1].endswith("scripts/aegis_router_keychain.sh")
+    assert args[2]
     assert "8787" in args
     assert pl["EnvironmentVariables"]["AEGIS_MANAGED_BY"] == "launchd"
+    assert pl["EnvironmentVariables"]["AEGIS_ENV"] == "development"
     assert "PYTHONPATH" in pl["EnvironmentVariables"]
 
 

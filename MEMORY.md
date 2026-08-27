@@ -1,33 +1,33 @@
 # Aegis Project Memory
 
 ## Architecture
-- Product 1.2.0 is the agent OS: kernel (process/memory/drivers/syscalls) + portable schema-2 home + frozen `/v1` + yield harness on the 1.1.1 JIT token chain.
-- Grok Build = Cloud Pro specialist (`grokbuild_aegis_spec.md` packet). Not a co-IDE.
-- Hermes: normalize → policy → redact → allow|deny|require-review → `~/.aegis/guard_log.jsonl`.
-- Pairs: `hermes_telemetry.record_pair`. `savings_percent` null unless admitted.
-- Sprints: `aegis sprint` → `~/.aegis/sprints.jsonl`. Board: `05_SPRINT_BOARD.md`.
-- Cursor pack-first. `reuse=hit` → do not Read packed_paths. Capsules store pack id.
+- 1.2.0 agent OS: kernel + portable schema-2 home + frozen `/v1` + yield on 1.1.1 JIT chain.
+- Hermes: normalize → policy → redact → allow|deny|require-review → `~/.aegis/guard_log.jsonl`. Rotate: `aegis guard rotate`; tests isolate prod log.
+- `savings_percent` = billed USD on `matched_provider_pairs` (else null). Tiny-chat routing on (D-040); implement packs off.
+- Hub: `~/AEGIS` (repo|data|skills|vault + `ops/`). Map: `~/AEGIS/00-START-HERE.md`.
 
 ## Standing decisions
-- D-011: shadow on. No threshold tune. Q-011 open (blocked).
-- D-013/D-017: live `aegis-gate` (`allow_tool_override=false`).
-- D-015/D-016: no pair / no `token_delta` until admission + named authorized model.
-- D-018/D-021: daemon bind/health; bindError preserved; failed start reaps.
-- D-019: R-012 complete at gate/admission only. R-014 and Q-012 parked.
-- D-020: Hermes org tools catalogued. `memory` is write. R-015: not domain-scoped.
-- D-022–D-024: file index, note graph, unified local search. No external API.
-- D-025: Sprint CLI. D-026: capsule pack_id + Cursor pack-first + empty-pack refuse.
-- D-027: Four Cursor skills via `aegis cursor --install` → `~/.agents/skills`.
-- D-029: Flow. Driver / Cursor+Perplexity car / One track. Skill `aegis-flow`.
-- D-030: Named MUL factory OS graph 9→20. Unbounded growth still frozen.
-- D-031: 1.2.0 product OS. Overlay ≠ SKU. Default engine product. `doctor --product` is second-machine floor.
-- Last ID: D-031. Shot-caller: this agent on unfrozen work. Freeze list binds except named graph set. No encoder.
-- Pin set: `hermes_notes_root` = AGIS MUL. Shadow on. Auto commit+push on a verified one-intent unit; announce first. Mixed trees / stop-hook repair are not commit points.
+- D-011: shadow on. Q-011 open. D-013/D-017: live `aegis-gate`.
+- D-015/D-016: no pair/`token_delta` until admission + named model.
+- D-018/D-021: daemon bind/health. D-019: R-012 at gate. D-020: memory is write.
+- D-022–D-029: index/graph/search/sprint/pack_id/skills/Flow.
+- D-030 MUL 9→20; D-033/034 20→32. Graph frozen. No MUL thaw D-036/037.
+- D-031: 1.2.0 OS. Overlay ≠ SKU. `doctor --product` second-machine floor.
+- D-032: covering reuse + hash verify. `os ready`. Honest yield = billed percent matches math.
+- D-036: five consecutive real receipts = window ready. Live window READY.
+- D-038: 10 same-model pairs, Δcost=0.
+- D-039: nano cheaper on tiny chat only. Implement ~17× Pro.
+- D-040: explore/review v4-pro → nano (41.3%). Pack/coding_prompt unrouted.
+- M-001..M-014: budget modules. `opt_in` fail-closed. Hosted not a SKU. Source mid $45k.
+- AA + demo: Pro implement baseline. Clock 2026-09-01; buyer **MARCUS RICHARDS**.
+- Last ID: D-040 / M-014. Pin: `hermes_notes_root` = AGIS MUL. Shadow on. Auto commit+push.
+- R-014/Q-012: Nous CLI probes fail. R012=`scripts/r012_harness.py`. Bill via `hermes proxy` if no NOUS_API_KEY.
 
 ## Rollback
 - Plugin: `hermes plugins disable aegis-gate`
-- D-026: revert `cursor_bridge.py` pack-first + `cli.py` continuity pack_id lookup
-- D-029: remove `aegis-flow` from `CURSOR_SKILL_NAMES` + Flow section in CURSORRULES
-- D-030: delete the 11 factory OS notes; revert MUL frontmatter; restore retrieval count 9
-- D-031: revert kernel/portable/api_contract/yield_proof + version 1.1.1 + FIRST_RELEASE boundary B
-- Cloud Pro overlay: revert packet in `grokbuild_aegis_spec.md` + router OPERATING / CORTEX-DOMAIN
+- D-026: revert pack-first + continuity pack_id. D-029: drop `aegis-flow`.
+- D-030: delete 11 factory OS notes; restore retrieval 9.
+- D-033: delete 8 notes; CORPUS=20. D-034: delete 4 notes + classifier; CORPUS=28.
+- D-035: revert verify-cost to JSON only. D-036: revert provider_window_status.
+- D-039: revert `--governed-model`. D-040: revert `routing.py` + yield billed percent.
+- D-031: revert kernel/portable/api/yield. D-032: revert covering-pack + freeze doctor.

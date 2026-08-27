@@ -179,7 +179,7 @@ def _cmd_pack(args: argparse.Namespace) -> int:
     from aegis.bento import assemble
     from aegis.compat.legacy import load_legacy_modules
     from aegis.ledger import record
-    from aegis.pack_cache import get_or_none, pack_key, save_pack
+    from aegis.pack_cache import attach_reuse_meta, get_or_none, pack_key, save_pack
     from aegis.quality import evaluate_pack
     from aegis.receipt import write_last_receipt
 
@@ -241,6 +241,13 @@ def _cmd_pack(args: argparse.Namespace) -> int:
             return 3
         return 0
 
+    from aegis.fund import pack_write_allowed
+
+    allowed, refuse_reason = pack_write_allowed(reuse=False)
+    if not allowed:
+        print(f"aegis pack: {refuse_reason}", file=sys.stderr)
+        return 4
+
     use_legacy = getattr(args, "legacy", False)
     if use_legacy:
         mods = load_legacy_modules()
@@ -297,6 +304,7 @@ def _cmd_pack(args: argparse.Namespace) -> int:
     payload["quality"] = gate.as_dict()
 
     if not args.no_cache and not (args.strict and gate.strict_fail):
+        attach_reuse_meta(payload, args.paths, args.mode, targets)
         save_pack(pack_id, payload)
 
     entry = None
@@ -466,7 +474,7 @@ def _cmd_budget(args: argparse.Namespace) -> int:
         rate = float(report.get("reuse_hit_rate_percent") or 0)
         attempts = int(report.get("pack_attempts") or 0)
         if attempts >= 3 and rate < 20:
-            print("  cue:        low reuse — stabilize --task/--mode on repeated files")
+            print("  cue:        low reuse — pack the same files until they change; covering hits only on unchanged hashes")
     return 0
 
 
@@ -551,9 +559,40 @@ def _load_source_manifest(path_text: str) -> Tuple[Dict[str, str], Set[str]]:
     return artifact, approved_paths
 
 
+def _parse_evidence_refs(raw: list) -> list:
+    refs = []
+    for item in raw or []:
+        text = str(item).strip()
+        if not text:
+            continue
+        if "=" in text:
+            kind, _, path = text.partition("=")
+            refs.append({"kind": kind.strip(), "ref": path.strip()})
+        else:
+            refs.append({"kind": "path", "ref": text})
+    return refs
+
+
+def _cmd_continuity_bench(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from aegis.continuity_bench import run_bench
+
+    path = Path(args.cases).expanduser()
+    if not path.is_file():
+        print(f"aegis continuity bench: cases file not found: {path}", file=sys.stderr)
+        return 2
+    report = run_bench(path)
+    print(json.dumps(report, indent=2))
+    return 0
+
+
 def _cmd_continuity(args: argparse.Namespace) -> int:
     """Default continuity entry/exit for a long code task."""
     from aegis.context_governor import persist_capsule, state_capsule
+
+    if args.continuity_action == "bench":
+        return _cmd_continuity_bench(args)
 
     if args.continuity_action == "checkpoint":
         capsule = state_capsule(
@@ -564,6 +603,11 @@ def _cmd_continuity(args: argparse.Namespace) -> int:
             current_defect=args.defect,
             next_action=args.next_action,
             mission=args.mission,
+            owner=getattr(args, "owner", "operator"),
+            privacy_class=getattr(args, "privacy_class", "internal"),
+            open_risks=getattr(args, "open_risk", []),
+            evidence_refs=_parse_evidence_refs(getattr(args, "evidence_ref", [])),
+            deletion_path=getattr(args, "deletion_path", ""),
         )
         path = persist_capsule(capsule)
         out = {"capsule": capsule, "path": str(path)}
@@ -643,9 +687,32 @@ def _cmd_outcome(args: argparse.Namespace) -> int:
         print(json.dumps(outcome_report(workflow=args.workflow), indent=2))
         return 0
     if args.outcome_action == "verify-cost":
-        from aegis.outcomes import cost_verification_report
-        print(json.dumps(cost_verification_report(limit=args.limit), indent=2))
+        from aegis.cost_provenance import classify_window
+        window = classify_window(limit=args.limit)
+        window["routing_authorized"] = False
+        print(json.dumps(window, indent=2, default=str))
         return 0
+    if args.outcome_action == "collect-receipts":
+        from aegis.receipt_collect import collect_matched_pairs, collect_receipts
+        pairs = int(getattr(args, "pairs", 0) or 0)
+        execute = bool(getattr(args, "execute", False))
+        model = str(getattr(args, "model", "") or "")
+        if pairs > 0:
+            payload = collect_matched_pairs(
+                execute=execute,
+                pairs=pairs,
+                model=model,
+                governed_model=str(getattr(args, "governed_model", "") or ""),
+            )
+        else:
+            payload = collect_receipts(
+                execute=execute,
+                count=int(getattr(args, "count", 5)),
+                model=model,
+            )
+        payload["routing_authorized"] = False
+        print(json.dumps(payload, indent=2, default=str))
+        return 0 if payload.get("ok") else 1
     row = record_outcome(
         task_id=args.task_id, variant=args.variant, accepted=args.accepted,
         elapsed_seconds=args.elapsed_seconds, retries=args.retries,
@@ -677,7 +744,18 @@ def _cmd_guard(args: argparse.Namespace) -> int:
             },
             "mission_lock": {
                 "allowed_domains": [d.strip() for d in cfg.guard_allowed_domains.split(",") if d.strip()],
-            }
+                "status": "locked" if [d.strip() for d in cfg.guard_allowed_domains.split(",") if d.strip()] else "unlocked",
+                "require": bool(getattr(cfg, "guard_require_mission_lock", False)),
+                "shadow_mode": bool(cfg.guard_shadow_mode),
+                "mission": str(getattr(cfg, "guard_mission", "") or ""),
+            },
+            "agency": {
+                "mode": str(getattr(cfg, "guard_agency_mode", "assistive")),
+            },
+            "memory_provenance": {
+                "require": bool(getattr(cfg, "guard_require_memory_provenance", False)),
+                "proposed_max": int(getattr(cfg, "memory_proposed_max", 200)),
+            },
         }
         if args.json:
             print(json.dumps(out, indent=2))
@@ -692,8 +770,46 @@ def _cmd_guard(args: argparse.Namespace) -> int:
             print(f"  Min signal score: {out['signal_preservation']['min_signal_score']}")
             print(f"  Preserve keywords: {', '.join(out['signal_preservation']['preserve_keywords']) or 'unset'}")
             print("Mission Lock:")
+            print(f"  Status: {out['mission_lock']['status'].upper()}")
+            print(f"  Require: {out['mission_lock']['require']}")
+            print(f"  Shadow: {out['mission_lock']['shadow_mode']}")
             print(f"  Allowed domains: {', '.join(out['mission_lock']['allowed_domains']) or 'unset'}")
+            print(f"  Mission: {out['mission_lock']['mission'] or 'unset'}")
+            print("Agency:")
+            print(f"  Mode: {out['agency']['mode']}")
+            print("Memory provenance:")
+            print(f"  Require admitted id: {out['memory_provenance']['require']}")
+            print(f"  Proposed max: {out['memory_provenance']['proposed_max']}")
         return 0
+
+    if args.guard_action == "set-mode":
+        from aegis.agency import AGENCY_MODES, normalize_mode
+        from aegis.config import load_config, save_config
+
+        mode = normalize_mode(args.mode)
+        if mode not in AGENCY_MODES:
+            print(f"aegis guard set-mode: invalid mode {args.mode!r}", file=sys.stderr)
+            return 2
+        cfg = load_config()
+        cfg.guard_agency_mode = mode
+        save_config(cfg)
+        print(json.dumps({"guard_agency_mode": mode}) if args.json else f"guard_agency_mode={mode}")
+        return 0
+
+    if args.guard_action == "rotate":
+        from aegis.guard import GUARD_LOG_PATH, rotate_guard_log
+        res = rotate_guard_log(GUARD_LOG_PATH, if_larger_mb=args.if_larger_mb)
+        if args.json:
+            print(json.dumps(res, indent=2))
+        elif res["rotated"]:
+            print(f"Rotated {res['source_lines']} lines ({res['size_bytes']} B)")
+            print(f"  Archive: {res['archive']}")
+            print(f"  Manifest: {res['manifest']}")
+        else:
+            print(f"No rotation: {res['reason']} (log: {res['log_path']})")
+        if res["rotated"] or res.get("reason") == "below_threshold":
+            return 0
+        return 2
 
     if args.guard_action == "log":
         # Try persistent log first
@@ -745,6 +861,98 @@ def _cmd_guard(args: argparse.Namespace) -> int:
                 dt = datetime.datetime.fromtimestamp(d.timestamp, tz=datetime.timezone.utc).isoformat()
                 score_str = f" score={d.score:.2f} |" if d.score is not None else ""
                 print(f"[{dt}] | {d.rule} | {d.action} |{score_str} {d.reason}")
+        return 0
+    return 1
+
+
+def _cmd_memory(args: argparse.Namespace) -> int:
+    import json as json_lib
+    from pathlib import Path
+
+    from aegis.memory_admit import (
+        add_conflict,
+        admit,
+        delete_record,
+        list_records,
+        record_stats,
+        validate_record,
+    )
+
+    action = args.memory_action
+    if action == "stats":
+        print(json_lib.dumps(record_stats(), indent=2) if args.json else json_lib.dumps(record_stats(), indent=2))
+        return 0
+
+    if action == "list":
+        rows = list_records(
+            memory_type=args.type or None,
+            privacy_class=args.privacy or None,
+            evidence_status=args.status or None,
+            limit=args.limit,
+        )
+        print(json_lib.dumps(rows, indent=2) if args.json else json_lib.dumps(rows, indent=2))
+        return 0
+
+    if action == "admit":
+        if args.file:
+            payload = json_lib.loads(Path(args.file).read_text(encoding="utf-8"))
+        elif args.stdin:
+            payload = json_lib.loads(sys.stdin.read())
+        else:
+            print("aegis memory admit: need --file or --stdin", file=sys.stderr)
+            return 2
+        ok, errors = validate_record(payload)
+        if not ok:
+            print(json_lib.dumps({"ok": False, "errors": errors}, indent=2), file=sys.stderr)
+            return 2
+        row = admit(payload, replace=bool(args.replace))
+        print(json_lib.dumps({"ok": True, "record": row}, indent=2))
+        return 0
+
+    if action == "conflict":
+        row = add_conflict(args.id, args.contradicts, reason=args.reason or "")
+        print(json_lib.dumps(row, indent=2))
+        return 0
+
+    if action == "delete":
+        out = delete_record(args.id, deletion_path=args.deletion_path or "cli")
+        print(json_lib.dumps(out, indent=2))
+        return 0
+
+    return 1
+
+
+def _cmd_relay(args: argparse.Namespace) -> int:
+    import json as json_lib
+    from pathlib import Path
+
+    from aegis.relay import correlate, export_redacted, query, tail
+
+    action = args.relay_action
+    if action == "tail":
+        rows = tail(args.source, limit=args.limit)
+        print(json_lib.dumps(rows, indent=2) if args.json else json_lib.dumps(rows, indent=2))
+        return 0
+    if action == "query":
+        rows = query(
+            source=args.source,
+            kind=args.kind or "",
+            request_id=args.request_id or "",
+            since=args.since or "",
+            limit=args.limit,
+        )
+        print(json_lib.dumps(rows, indent=2))
+        return 0
+    if action == "correlate":
+        out = correlate(args.request_id)
+        print(json_lib.dumps(out, indent=2))
+        return 0
+    if action == "export":
+        from aegis.paths import relay_export_dir
+
+        dest = Path(args.output) if args.output else relay_export_dir() / "relay_export.json"
+        count = export_redacted(dest, source=args.source, limit=args.limit)
+        print(json_lib.dumps({"exported": count, "path": str(dest)}, indent=2))
         return 0
     return 1
 
@@ -1426,13 +1634,13 @@ def _cmd_version(args: argparse.Namespace) -> int:
     _prepare_read()
     st = {
         "version": __version__,
-        "epoch": "1.2",
+        "epoch": "1.3",
         "compound": compound_status(),
     }
     if args.json:
         print(json.dumps(st, indent=2))
     else:
-        print(f"aegis {__version__} (epoch 1.2)")
+        print(f"aegis {__version__} (epoch 1.3)")
         c = st["compound"]
         print(
             f"  compound engine: {c.get('structured_count')} structured · "
@@ -1901,6 +2109,7 @@ def _cmd_sprint(args: argparse.Namespace) -> int:
         get_sprint,
         list_sprints,
         park_sprint,
+        reconcile_known_history,
         report,
         unpark_sprint,
         seed_board,
@@ -2021,6 +2230,18 @@ def _cmd_sprint(args: argparse.Namespace) -> int:
         else:
             print(f"wrote {dest}")
         return 0
+    if action == "reconcile":
+        result = reconcile_known_history()
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif result.get("ok"):
+            print(
+                f"reconciled ids={','.join(result['ids'])} "
+                f"audit={result['audit_path']}"
+            )
+        else:
+            print(f"reconcile failed: {result.get('error')}", file=sys.stderr)
+        return 0 if result.get("ok") else 2
     print(f"unknown sprint action {action}", file=sys.stderr)
     return 2
 
@@ -2139,6 +2360,25 @@ def _cmd_os(args: argparse.Namespace) -> int:
         return 0 if payload.get("ok") else 1
     elif action == "bench":
         payload = syscall("bench", paths=list(getattr(args, "path", None) or []), rounds=getattr(args, "rounds", 12))
+    elif action == "ready":
+        from aegis.doctor import release_report
+
+        payload = release_report()
+        if args.json:
+            print(json.dumps(payload, indent=2, ensure_ascii=False, default=str))
+        else:
+            print(
+                f"Aegis release  v{payload.get('version')}  ok={payload.get('ok')}  "
+                f"product_ready={payload.get('product_ready')}"
+            )
+            print(f"  decisions={payload.get('decisions_ok')}  modules={payload.get('modules_ok')}")
+            print(f"  reuse: {payload.get('reuse')}")
+            print("  savings_percent=null")
+            repair = payload.get("repair") or {}
+            for k, ids in repair.items():
+                if ids:
+                    print(f"  repair.{k}: {', '.join(ids)}")
+        return 0 if payload.get("ok") else 1
     else:
         payload = syscall("score")
     return _print_kernel(payload, bool(args.json))
@@ -2199,6 +2439,150 @@ def _cmd_decisions(args: argparse.Namespace) -> int:
             )
             print(f"         → {row['action']}")
     return 0 if report.get("ok") else 1
+
+
+def _cmd_modules(args: argparse.Namespace) -> int:
+    from aegis.modules import health, measure_naive_vs_pack
+
+    _prepare_read()
+    action = getattr(args, "modules_action", "health") or "health"
+    if action == "measure":
+        payload = measure_naive_vs_pack(
+            args.path,
+            model=args.model,
+            provider=args.provider,
+        )
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0 if payload.get("ok") else 1
+    report = health()
+    if args.json:
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+    else:
+        print(f"Aegis modules  v{report.get('version')}  ok={report.get('ok')}")
+        if report.get("repair"):
+            print(f"  repair: {', '.join(report['repair'])}")
+        for row in report.get("modules") or []:
+            mark = "OK" if row.get("aligned") else "FIX"
+            print(
+                f"  [{mark:3}] {row['id']:6} {row.get('name', ''):28} "
+                f"{row['verdict']:11} {row['evidence']}"
+            )
+            print(f"         → {row['action']}")
+    return 0 if report.get("ok") else 1
+
+
+def _cmd_price(args: argparse.Namespace) -> int:
+    from aegis.pricing import format_quote, quote
+
+    _prepare_read()
+    payload = quote()
+    action = getattr(args, "price_action", "quote") or "quote"
+    if getattr(args, "json", False):
+        if action == "skus":
+            payload = {
+                "ok": True,
+                "savings_percent": None,
+                "skus": payload.get("skus"),
+                "value_delta": payload.get("value_delta"),
+            }
+        elif action == "pitch":
+            payload = {
+                "ok": True,
+                "savings_percent": None,
+                "buyer": payload.get("buyer"),
+                "sell": payload.get("sell"),
+                "market": payload.get("market"),
+            }
+        print(json.dumps(payload, indent=2, ensure_ascii=False, default=str))
+        return 0
+    if action == "skus":
+        sk = payload["skus"]
+        src = sk["source_nonexclusive"]["usd"]
+        ex = sk["exclusive_lab_12mo"]["usd"]
+        print("Aegis SKUs  (hosted=not offered)  savings_percent=null")
+        print(f"  source      ${src['low']:,}–${src['high']:,}  mid ${src['mid']:,}  {sk['source_nonexclusive']['includes']}")
+        print(f"  exclusive   ${ex['low']:,}–${ex['high']:,}  mid ${ex['mid']:,}  {sk['exclusive_lab_12mo']['includes']}")
+        return 0
+    if action == "pitch":
+        print(f"buyer: {payload['buyer']['yes']}")
+        print(f"not:   {payload['buyer']['no']}")
+        print("sell:")
+        for step in payload["sell"]:
+            print(f"  - {step}")
+        print("market:")
+        for step in payload["market"]:
+            print(f"  - {step}")
+        return 0
+    print(format_quote(payload))
+    return 0
+
+
+
+def _cmd_intake(args: argparse.Namespace) -> int:
+    from aegis.intake import ingest_text, list_reports
+    _prepare_read()
+    action = getattr(args, 'intake_action', 'list') or 'list'
+    if action == 'add':
+        rec = ingest_text(args.text, sender=getattr(args, 'sender', 'local'), channel=getattr(args, 'channel', 'cli'))
+        if getattr(args, 'json', False):
+            print(json.dumps(rec, indent=2))
+        else:
+            print(f"[AEGIS:ACK] ID:{rec['id']} | Mod:{rec['module']} | Priority:{rec['priority']} | Queued")
+        return 0
+    elif action == 'list':
+        reports = list_reports(limit=getattr(args, 'limit', 10))
+        if getattr(args, 'json', False):
+            print(json.dumps(reports, indent=2))
+        else:
+            if not reports:
+                print('No ingested reports found.')
+            for r in reports:
+                print(f"{r.get('id')}  [{r.get('priority')}]  {r.get('module')}  -  {r.get('summary')}")
+        return 0
+    return 1
+
+def _cmd_demo(args: argparse.Namespace) -> int:
+    from aegis.demo import (
+        format_run,
+        format_status,
+        name_buyer,
+        run,
+        spoken_script,
+        start_clock,
+        status,
+    )
+
+    _prepare_read()
+    action = getattr(args, "demo_action", "status") or "status"
+    as_json = bool(getattr(args, "json", False))
+    if action == "start":
+        payload = start_clock(reset=bool(getattr(args, "reset", False)))
+        print(json.dumps(payload, indent=2, ensure_ascii=False) if as_json else format_status(payload))
+        return 0 if payload.get("ok") else 1
+    if action == "buyer":
+        payload = name_buyer(getattr(args, "name", "") or "")
+        print(json.dumps(payload, indent=2, ensure_ascii=False) if as_json else format_status(payload))
+        return 0 if payload.get("ok") else 2
+    if action == "script":
+        payload = spoken_script()
+        if as_json:
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            for beat in payload.get("beats") or []:
+                print(beat)
+        return 0
+    if action == "run":
+        paths = list(getattr(args, "path", None) or [])
+        skip = bool(getattr(args, "skip_pack", False))
+        if not skip and not paths:
+            print("aegis demo run: need a file path (or --skip-pack)", file=sys.stderr)
+            return 2
+        payload = run(paths, skip_pack=skip)
+        print(json.dumps(payload, indent=2, ensure_ascii=False, default=str) if as_json else format_run(payload))
+        return 0 if payload.get("ok") else 1
+    payload = status()
+    print(json.dumps(payload, indent=2, ensure_ascii=False) if as_json else format_status(payload))
+    return 0 if payload.get("ok") else 1
 
 
 def _parse_mode(value: str) -> str:
@@ -2391,7 +2775,23 @@ def build_parser() -> argparse.ArgumentParser:
     ct_checkpoint.add_argument("--defect", default="")
     ct_checkpoint.add_argument("--next-action", required=True)
     ct_checkpoint.add_argument("--mission", default="", help="Original mission objective (or carried over if omitted)")
+    ct_checkpoint.add_argument("--owner", default="operator")
+    ct_checkpoint.add_argument("--privacy-class", default="internal", dest="privacy_class",
+                               choices=["public", "internal", "private", "sensitive", "restricted"])
+    ct_checkpoint.add_argument("--open-risk", action="append", default=[], dest="open_risk")
+    ct_checkpoint.add_argument("--evidence-ref", action="append", default=[], dest="evidence_ref")
+    ct_checkpoint.add_argument("--deletion-path", default="", dest="deletion_path")
     ct_checkpoint.set_defaults(func=_cmd_continuity)
+    ct_bench = ct_sub.add_parser("bench", help="A/B baseline vs governed handoff on continuity fixture")
+    ct_bench.add_argument(
+        "--cases",
+        default=str(
+            Path.home()
+            / "Documents/ChatGPT/Memory utility Labs/experiments/continuity-assurance/cases.json"
+        ),
+    )
+    ct_bench.add_argument("--json", action="store_true")
+    ct_bench.set_defaults(func=_cmd_continuity)
 
     oc = sub.add_parser("outcome", help="Record or inspect matched workflow outcomes")
     oc_sub = oc.add_subparsers(dest="outcome_action", required=True)
@@ -2415,9 +2815,35 @@ def build_parser() -> argparse.ArgumentParser:
     oc_report = oc_sub.add_parser("report", help="Read-only matched baseline/governed report")
     oc_report.add_argument("--workflow", default="production_code_change")
     oc_report.set_defaults(func=_cmd_outcome)
-    oc_verify = oc_sub.add_parser("verify-cost", help="Verify cost provenance for recent runs")
+    oc_verify = oc_sub.add_parser(
+        "verify-cost",
+        help="Audit recent cost provenance and classify gaps (never authorizes routing)",
+    )
     oc_verify.add_argument("--limit", type=int, default=5)
     oc_verify.set_defaults(func=_cmd_outcome)
+    oc_collect = oc_sub.add_parser(
+        "collect-receipts",
+        help="Probe or collect consecutive Nous/AGIS billed receipts (never authorizes routing)",
+    )
+    oc_collect.add_argument(
+        "--execute",
+        action="store_true",
+        help="Bill the named model and append observed rows. Default is probe-only.",
+    )
+    oc_collect.add_argument("--count", type=int, default=5)
+    oc_collect.add_argument(
+        "--pairs",
+        type=int,
+        default=0,
+        help="If >0 with --execute, bill this many baseline/governed pairs (not a routing trial)",
+    )
+    oc_collect.add_argument("--model", default="", help="Override AEGIS_RECEIPT_MODEL / deepseek-v4-pro")
+    oc_collect.add_argument(
+        "--governed-model",
+        default="",
+        help="Optional cheaper governed model id (same Nous/AGIS provider)",
+    )
+    oc_collect.set_defaults(func=_cmd_outcome)
 
     pilot = sub.add_parser("pilot", help="Create and time reproducible matched workflow pairs")
     pilot_sub = pilot.add_subparsers(dest="pilot_action", required=True)
@@ -2798,6 +3224,73 @@ def build_parser() -> argparse.ArgumentParser:
     gdl.add_argument("--json", action="store_true")
     gdl.set_defaults(func=_cmd_guard)
 
+    gdr = gd_sub.add_parser("rotate", help="Rotate guard_log.jsonl to a timestamped archive with manifest")
+    gdr.add_argument("--if-larger-mb", type=float, default=None,
+                     help="Rotate only when the log is at least this many MB")
+    gdr.add_argument("--json", action="store_true")
+    gdr.set_defaults(func=_cmd_guard)
+
+    gdsm = gd_sub.add_parser("set-mode", help="Set bounded agency mode (reflective|assistive|autonomous)")
+    gdsm.add_argument("mode", choices=["reflective", "assistive", "autonomous"])
+    gdsm.add_argument("--json", action="store_true")
+    gdsm.set_defaults(func=_cmd_guard)
+
+    mem = sub.add_parser("memory", help="Durable provenance memory (memory_records.jsonl)")
+    mem_sub = mem.add_subparsers(dest="memory_action", required=True)
+    mem_admit = mem_sub.add_parser("admit", help="Validate and admit a memory record")
+    mem_admit.add_argument("--file", default="")
+    mem_admit.add_argument("--stdin", action="store_true")
+    mem_admit.add_argument("--replace", action="store_true")
+    mem_admit.add_argument("--json", action="store_true")
+    mem_admit.set_defaults(func=_cmd_memory)
+    mem_list = mem_sub.add_parser("list", help="List admitted memory records")
+    mem_list.add_argument("--type", default="")
+    mem_list.add_argument("--privacy", default="")
+    mem_list.add_argument("--status", default="")
+    mem_list.add_argument("--limit", type=int, default=50)
+    mem_list.add_argument("--json", action="store_true")
+    mem_list.set_defaults(func=_cmd_memory)
+    mem_conflict = mem_sub.add_parser("conflict", help="Link conflicting records")
+    mem_conflict.add_argument("--id", required=True)
+    mem_conflict.add_argument("--contradicts", required=True)
+    mem_conflict.add_argument("--reason", default="")
+    mem_conflict.add_argument("--json", action="store_true")
+    mem_conflict.set_defaults(func=_cmd_memory)
+    mem_delete = mem_sub.add_parser("delete", help="Delete a durable memory record")
+    mem_delete.add_argument("--id", required=True)
+    mem_delete.add_argument("--deletion-path", default="")
+    mem_delete.add_argument("--json", action="store_true")
+    mem_delete.set_defaults(func=_cmd_memory)
+    mem_stats = mem_sub.add_parser("stats", help="Memory tier statistics")
+    mem_stats.add_argument("--json", action="store_true")
+    mem_stats.set_defaults(func=_cmd_memory)
+
+    rl = sub.add_parser("relay", help="Observability relay over guard/continuity/ledger/outcomes")
+    rl_sub = rl.add_subparsers(dest="relay_action", required=True)
+    rl_tail = rl_sub.add_parser("tail", help="Tail recent relay events")
+    rl_tail.add_argument("--source", default="all", choices=["all", "guard", "continuity", "ledger", "outcomes"])
+    rl_tail.add_argument("--limit", type=int, default=50)
+    rl_tail.add_argument("--json", action="store_true")
+    rl_tail.set_defaults(func=_cmd_relay)
+    rl_query = rl_sub.add_parser("query", help="Filter relay events")
+    rl_query.add_argument("--source", default="all")
+    rl_query.add_argument("--kind", default="")
+    rl_query.add_argument("--request-id", default="")
+    rl_query.add_argument("--since", default="")
+    rl_query.add_argument("--limit", type=int, default=50)
+    rl_query.add_argument("--json", action="store_true")
+    rl_query.set_defaults(func=_cmd_relay)
+    rl_corr = rl_sub.add_parser("correlate", help="Correlate events by request_id")
+    rl_corr.add_argument("request_id")
+    rl_corr.add_argument("--json", action="store_true")
+    rl_corr.set_defaults(func=_cmd_relay)
+    rl_export = rl_sub.add_parser("export", help="Export redacted relay snapshot")
+    rl_export.add_argument("--output", default="")
+    rl_export.add_argument("--source", default="all")
+    rl_export.add_argument("--limit", type=int, default=200)
+    rl_export.add_argument("--json", action="store_true")
+    rl_export.set_defaults(func=_cmd_relay)
+
     sp = sub.add_parser("sprint", help="Sprint ledger — track Aegis work in iterations")
     sp_sub = sp.add_subparsers(dest="sprint_action", required=True)
     sp_seed = sp_sub.add_parser("seed", help="Insert the catalog (existing IDs kept)")
@@ -2864,6 +3357,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp_board.add_argument("--write", default="")
     sp_board.add_argument("--json", action="store_true")
     sp_board.set_defaults(func=_cmd_sprint)
+    sp_reconcile = sp_sub.add_parser(
+        "reconcile",
+        help="One-time SP-023/024/025 identity correction (idempotent)",
+    )
+    sp_reconcile.add_argument("--json", action="store_true")
+    sp_reconcile.set_defaults(func=_cmd_sprint)
 
     hm = sub.add_parser("hermes", help="Read-only Hermes search/resolve")
     hm_sub = hm.add_subparsers(dest="hermes_action", required=True)
@@ -2934,6 +3433,9 @@ def build_parser() -> argparse.ArgumentParser:
     os_bench.add_argument("--rounds", type=int, default=12)
     os_bench.add_argument("--json", action="store_true")
     os_bench.set_defaults(func=_cmd_os)
+    os_ready = os_sub.add_parser("ready", help="Release gate: product + freeze + D/M health")
+    os_ready.add_argument("--json", action="store_true")
+    os_ready.set_defaults(func=_cmd_os)
 
     api_p = sub.add_parser("api", help="Frozen /v1 contract")
     api_sub = api_p.add_subparsers(dest="api_action", required=True)
@@ -2961,6 +3463,66 @@ def build_parser() -> argparse.ArgumentParser:
     dec_m.add_argument("--model", default="xiaomi/mimo-v2.5-pro")
     dec_m.add_argument("--provider", default="nous")
     dec_m.set_defaults(func=_cmd_decisions)
+
+    mods = sub.add_parser("modules", help="Health of every budget-aware M- module")
+    mods_sub = mods.add_subparsers(dest="modules_action", required=True)
+    mods_h = mods_sub.add_parser("health", help="Probe M-001..M-014")
+    mods_h.add_argument("--json", action="store_true")
+    mods_h.set_defaults(func=_cmd_modules)
+    mods_m = mods_sub.add_parser("measure", help="Authorized Hermes naive vs pack usage")
+    mods_m.add_argument("path")
+    mods_m.add_argument("--model", default="xiaomi/mimo-v2.5-pro")
+    mods_m.add_argument("--provider", default="nous")
+    mods_m.set_defaults(func=_cmd_modules)
+
+    pr = sub.add_parser("price", help="Honest AGIS product quote (not token-bill valuation)")
+    pr_sub = pr.add_subparsers(dest="price_action", required=True)
+    pr_q = pr_sub.add_parser("quote", help="Then vs now bands + replacement cost")
+    pr_q.add_argument("--json", action="store_true")
+    pr_q.set_defaults(func=_cmd_price)
+    pr_s = pr_sub.add_parser("skus", help="Source vs exclusive vs hosted-refused")
+    pr_s.add_argument("--json", action="store_true")
+    pr_s.set_defaults(func=_cmd_price)
+    pr_p = pr_sub.add_parser("pitch", help="Who to sell, how to demo, what not to claim")
+    pr_p.add_argument("--json", action="store_true")
+    pr_p.set_defaults(func=_cmd_price)
+
+    demo = sub.add_parser("demo", help="Path A four-beat rehearsal + 14-day buyer clock")
+    demo_sub = demo.add_subparsers(dest="demo_action", required=True)
+    demo_start = demo_sub.add_parser("start", help="Start 14-day operator-owner clock")
+    demo_start.add_argument("--reset", action="store_true")
+    demo_start.add_argument("--json", action="store_true")
+    demo_start.set_defaults(func=_cmd_demo)
+    demo_run = demo_sub.add_parser("run", help="Rehearse os ready → pack twice → quote → honesty")
+    demo_run.add_argument("path", nargs="*")
+    demo_run.add_argument("--skip-pack", action="store_true")
+    demo_run.add_argument("--json", action="store_true")
+    demo_run.set_defaults(func=_cmd_demo)
+    demo_buyer = demo_sub.add_parser("buyer", help="Record one named operator-owner (no outreach)")
+    demo_buyer.add_argument("name")
+    demo_buyer.add_argument("--json", action="store_true")
+    demo_buyer.set_defaults(func=_cmd_demo)
+    demo_st = demo_sub.add_parser("status", help="Days left and whether a buyer is named")
+    demo_st.add_argument("--json", action="store_true")
+    demo_st.set_defaults(func=_cmd_demo)
+    demo_sc = demo_sub.add_parser("script", help="Spoken four beats (no pack)")
+    demo_sc.add_argument("--json", action="store_true")
+    demo_sc.set_defaults(func=_cmd_demo)
+
+
+    intake = sub.add_parser("intake", help="Ingest and triage issues/reports into AEGIS")
+    intake_sub = intake.add_subparsers(dest="intake_action", required=True)
+    intake_add = intake_sub.add_parser("add", help="Ingest an issue or report payload")
+    intake_add.add_argument("text", help="Message text (e.g. '!BUG [mod] summary')")
+    intake_add.add_argument("--sender", default="local", help="Sender identifier (e.g. phone/handle)")
+    intake_add.add_argument("--channel", default="cli", help="Source channel")
+    intake_add.add_argument("--json", action="store_true")
+    intake_add.set_defaults(func=_cmd_intake)
+
+    intake_list = intake_sub.add_parser("list", help="List recent ingested reports")
+    intake_list.add_argument("--limit", type=int, default=10)
+    intake_list.add_argument("--json", action="store_true")
+    intake_list.set_defaults(func=_cmd_intake)
 
     return p
 

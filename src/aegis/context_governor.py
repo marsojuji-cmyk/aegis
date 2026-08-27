@@ -14,6 +14,8 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional
 from aegis.tokens import estimate_tokens
 from aegis.paths import context_capsules_dir, ensure_home
 
+_PRIVACY_CLASSES = frozenset({"public", "internal", "private", "sensitive", "restricted"})
+
 
 @dataclass(frozen=True)
 class ContextStatus:
@@ -105,6 +107,11 @@ def state_capsule(
     verification_status: str = "verified",
     max_tokens: int = 1500,
     mission: str = "",
+    owner: str = "operator",
+    privacy_class: str = "internal",
+    open_risks: Iterable[str] = (),
+    evidence_refs: Iterable[Mapping[str, Any]] = (),
+    deletion_path: str = "",
 ) -> Dict[str, Any]:
     """Create a bounded resume receipt; raw evidence stays outside the prompt."""
     if verification_status not in {"verified", "provisional"}:
@@ -115,6 +122,10 @@ def state_capsule(
     if verification_status == "verified":
         if not verified_items or not all(_meaningful(x) for x in verified_items):
             raise ValueError("verified capsule needs at least one specific verified fact")
+    pc = (privacy_class or "internal").strip().lower()
+    if pc not in _PRIVACY_CLASSES:
+        raise ValueError(f"privacy_class must be one of {sorted(_PRIVACY_CLASSES)}")
+
     capsule = {
         "objective": objective.strip(),
         "constraints": [str(x).strip() for x in constraints if str(x).strip()],
@@ -124,8 +135,15 @@ def state_capsule(
         "current_defect": current_defect.strip(),
         "next_action": next_action.strip(),
         "verification_status": verification_status,
+        "owner": (owner or "operator").strip()[:64],
+        "privacy_class": pc,
+        "open_risks": [str(x).strip() for x in open_risks if str(x).strip()],
+        "evidence_refs": [dict(x) for x in evidence_refs],
+        "recorded_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
     }
-    
+    if deletion_path.strip():
+        capsule["deletion_path"] = deletion_path.strip()
+
     if mission:
         capsule["mission"] = mission.strip()
         drift_score = evaluate_drift(capsule["mission"], objective + "\n" + next_action)
@@ -154,6 +172,20 @@ def persist_capsule(capsule: Mapping[str, Any]) -> Path:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     path = directory / f"{stamp}_{capsule['fingerprint']}.json"
     path.write_text(json.dumps(dict(capsule), indent=2, ensure_ascii=False), encoding="utf-8")
+    try:
+        from aegis.relay import append_continuity_event
+
+        append_continuity_event({
+            "kind": "capsule",
+            "fingerprint": capsule.get("fingerprint"),
+            "verification_status": capsule.get("verification_status"),
+            "owner": capsule.get("owner"),
+            "privacy_class": capsule.get("privacy_class"),
+            "drift_status": capsule.get("drift_status"),
+            "path": str(path),
+        })
+    except Exception:  # noqa: BLE001
+        pass
     return path
 
 

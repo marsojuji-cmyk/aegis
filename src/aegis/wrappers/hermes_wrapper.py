@@ -11,6 +11,7 @@ to block a tool; it returns a structured deny payload instead.
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -18,6 +19,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from aegis.config import AegisConfig, load_config
 from aegis.guard import AegisGuard, AegisGuardContext
+from aegis.mission_lock import in_scope as shared_in_scope, parse_domains
 
 REDACTION_VERSION = "1.0"
 REDACTED = "[REDACTED]"
@@ -165,13 +167,7 @@ def _as_mapping(raw: Any) -> Optional[Dict[str, Any]]:
 
 
 def _domains_from(raw: Any) -> List[str]:
-    if raw is None:
-        return []
-    if isinstance(raw, str):
-        return [p.strip() for p in raw.split(",") if p.strip()]
-    if isinstance(raw, Sequence) and not isinstance(raw, (str, bytes)):
-        return [str(p).strip() for p in raw if str(p).strip()]
-    return []
+    return parse_domains(raw)
 
 
 def classify_tool(tool_name: str) -> Tuple[Optional[str], Optional[str]]:
@@ -190,11 +186,7 @@ def _scope_values(args: Mapping[str, Any]) -> List[Tuple[str, str]]:
 
 
 def _in_scope(value: str, domains: Sequence[str], *, is_url: bool) -> bool:
-    if not domains:
-        return False
-    if is_url:
-        return any(domain in value for domain in domains)
-    return any(value.startswith(domain) for domain in domains)
+    return shared_in_scope(value, domains, is_url=is_url)
 
 
 class HermesWrapper:
@@ -309,7 +301,8 @@ class HermesWrapper:
                 policy=["ambiguous"],
             )
         for key, value in scope_hits:
-            if not _in_scope(value, req.allowed_domains, is_url=(key == "url")):
+            is_url = key in {"url", "href", "endpoint"} or "://" in value
+            if not _in_scope(value, req.allowed_domains, is_url=is_url):
                 return self._finish(
                     req,
                     ok=False,
@@ -320,15 +313,47 @@ class HermesWrapper:
                     policy=["mission_lock"],
                 )
 
-        if req.risk == "high":
+        from aegis.agency import gate_decision, normalize_mode
+
+        mode = normalize_mode(getattr(self.config, "guard_agency_mode", "assistive"))
+        durable = req.capability == "memory.write" and bool(
+            getattr(self.config, "guard_require_memory_provenance", False)
+        )
+        if durable and req.tool_name == "memory":
+            record_id = str(req.args.get("memory_record_id") or req.args.get("record_id") or "")
+            if not record_id:
+                return self._finish(
+                    req,
+                    ok=False,
+                    decision="deny",
+                    reason="memory.write requires admitted memory_record_id",
+                    would_block=True,
+                    rule="memory",
+                    policy=["memory", "provenance"],
+                )
+
+        agency_decision, agency_reason = gate_decision(
+            mode, req.capability, req.risk, durable_memory=durable,
+        )
+        if agency_decision == "deny":
+            return self._finish(
+                req,
+                ok=False,
+                decision="deny",
+                reason=agency_reason,
+                would_block=True,
+                rule="agency",
+                policy=["agency", "deny"],
+            )
+        if agency_decision == "require-review":
             return self._finish(
                 req,
                 ok=False,
                 decision="require-review",
-                reason=f"high-risk capability {req.capability} requires review",
+                reason=agency_reason,
                 would_block=True,
-                rule="risk",
-                policy=["risk", "require-review"],
+                rule="agency",
+                policy=["agency", "require-review"],
             )
 
         return self._finish(
@@ -366,7 +391,9 @@ class HermesWrapper:
             result.ok = False
             result.executed = False
             result.output = None
-            result.reason = f"{result.reason}; execute error: {type(exc).__name__}"
+            detail = " ".join(str(exc).split())[:160]
+            suffix = f"{type(exc).__name__}: {detail}" if detail else type(exc).__name__
+            result.reason = f"{result.reason}; execute error: {suffix}"
             self._audit(result, req)
             return result.as_dict()
 
@@ -459,11 +486,39 @@ class HermesWrapper:
             reason=result.reason,
             output_excerpt=redact_excerpt(result.output) if result.output is not None else None,
         )
+        try:
+            from aegis.relay import append_continuity_event
+
+            append_continuity_event({
+                "kind": "hermes_outcome",
+                "request_id": result.request_id,
+                "trace_id": result.trace_id,
+                "decision": result.decision,
+                "executed": result.executed,
+                "tool_name": result.tool_name,
+            })
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def hermes_tool_request(**kwargs: Any) -> Optional[Dict[str, Any]]:
     """tool_request middleware: identity-preserving, no arg rewrite."""
     return None
+
+
+def gate_deny_payload(result: Mapping[str, Any]) -> str:
+    """JSON string for Hermes tool-role content (chat APIs require string, not dict)."""
+    return json.dumps(
+        {
+            "ok": False,
+            "blocked_by": "aegis",
+            "decision": result.get("decision"),
+            "reason": result.get("reason"),
+            "request_id": result.get("request_id"),
+            "trace_id": result.get("trace_id"),
+            "redaction_version": REDACTION_VERSION,
+        }
+    )
 
 
 def hermes_tool_execution(**kwargs: Any) -> Any:
@@ -489,15 +544,7 @@ def hermes_tool_execution(**kwargs: Any) -> Any:
     result = wrapper.handle(request, execute_fn=next_call if callable(next_call) else None)
     if result.get("executed"):
         return result.get("output")
-    return {
-        "ok": False,
-        "blocked_by": "aegis",
-        "decision": result.get("decision"),
-        "reason": result.get("reason"),
-        "request_id": result.get("request_id"),
-        "trace_id": result.get("trace_id"),
-        "redaction_version": REDACTION_VERSION,
-    }
+    return gate_deny_payload(result)
 
 
 def register(ctx: Any) -> None:

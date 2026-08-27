@@ -349,3 +349,113 @@ def test_guard_tool_pilot_flow(tmp_path):
         assert decision.reason
         if decision.action == "block":
             assert decision.input_excerpt is not None
+
+
+def test_rotate_guard_log_refuses_missing_and_empty(tmp_path):
+    from aegis.guard import rotate_guard_log
+
+    log = tmp_path / "guard_log.jsonl"
+    res = rotate_guard_log(log)
+    assert res["rotated"] is False
+    assert res["reason"] == "empty_log"
+
+    log.write_text("")
+    res = rotate_guard_log(log)
+    assert res["rotated"] is False
+    assert res["reason"] == "empty_log"
+    assert log.exists()
+
+
+def test_rotate_guard_log_rotates_with_manifest(tmp_path):
+    import hashlib
+    import json
+    from pathlib import Path
+
+    from aegis.guard import rotate_guard_log
+
+    log = tmp_path / "guard_log.jsonl"
+    payload = b'{"a":1}\n{"b":2}\n{"c":3}\n'
+    log.write_bytes(payload)
+
+    res = rotate_guard_log(log)
+    assert res["rotated"] is True
+    assert not log.exists()
+
+    archive = Path(res["archive"])
+    assert archive.read_bytes() == payload
+    assert archive.name.startswith("guard_log.v2-archive-")
+    assert archive.name.endswith(".jsonl")
+
+    manifest = json.loads(Path(res["manifest"]).read_text())
+    assert manifest["source_lines"] == 3
+    assert manifest["source_bytes"] == len(payload)
+    assert manifest["source_sha256"] == hashlib.sha256(payload).hexdigest()
+    assert manifest["archive_file"] == archive.name
+    assert res["source_lines"] == 3
+
+
+def test_rotate_guard_log_threshold(tmp_path):
+    from aegis.guard import rotate_guard_log
+
+    log = tmp_path / "guard_log.jsonl"
+    log.write_bytes(b'{"a":1}\n')
+
+    res = rotate_guard_log(log, if_larger_mb=1)
+    assert res["rotated"] is False
+    assert res["reason"] == "below_threshold"
+    assert log.exists()
+
+    res = rotate_guard_log(log, if_larger_mb=0)
+    assert res["rotated"] is True
+    assert not log.exists()
+
+
+def test_guard_rotate_cli(tmp_path, monkeypatch, capsys):
+    import json
+
+    from aegis import cli
+
+    log = tmp_path / "guard_log.jsonl"
+    log.write_bytes(b'{"a":1}\n')
+    monkeypatch.setattr("aegis.guard.GUARD_LOG_PATH", log)
+
+    rc = cli.main(["guard", "rotate", "--json"])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["rotated"] is True
+    assert not log.exists()
+
+    rc = cli.main(["guard", "rotate", "--json"])
+    assert rc == 2
+    out = json.loads(capsys.readouterr().out)
+    assert out["rotated"] is False
+    assert out["reason"] == "empty_log"
+
+
+def test_guard_agency_reflective_blocks_medium_write():
+    from aegis.agency import gate_decision
+
+    decision, _ = gate_decision("reflective", "fs.write", "medium")
+    assert decision == "deny"
+
+
+def test_guard_agency_assistive_allows_medium_write():
+    from aegis.agency import gate_decision
+
+    decision, _ = gate_decision("assistive", "fs.write", "medium")
+    assert decision == "allow"
+
+
+def test_guard_unknown_tool_skips_agency():
+    config = AegisConfig(
+        guard_shadow_mode=False,
+        guard_max_tool_calls=10,
+        guard_max_velocity_calls_per_min=10,
+    )
+    guard = AegisGuard(config)
+
+    @aegis_protect(guard)
+    def dummy_tool(x):
+        return x
+
+    assert dummy_tool(1) == 1

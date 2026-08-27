@@ -42,6 +42,42 @@ def save_fund(fund: Dict[str, Any]) -> None:
     fund_path().write_text(json.dumps(fund, indent=2), encoding="utf-8")
 
 
+def compute_spend_headroom(
+    cfg: Optional[AegisConfig] = None,
+    report: Optional[Dict[str, Any]] = None,
+) -> int:
+    """Tokens spendable above reserve floor this week (0 = valve closed)."""
+    cfg = cfg or load_config()
+    report = report if report is not None else generate_report(cfg)
+    cap = int(cfg.weekly_token_cap)
+    processed = int(report["total_tokens_consumed"])
+    reserve_tokens = int(cap * cfg.reserve_floor)
+    return max(0, cap - processed - reserve_tokens)
+
+
+def pack_write_allowed(
+    *,
+    reuse: bool,
+    cfg: Optional[AegisConfig] = None,
+    report: Optional[Dict[str, Any]] = None,
+) -> tuple[bool, str]:
+    """
+    Reuse hits (processed_in=0) always pass. Fresh pack misses refuse at headroom=0.
+    """
+    if reuse:
+        return True, ""
+    cfg = cfg or load_config()
+    report = report if report is not None else generate_report(cfg)
+    headroom = compute_spend_headroom(cfg, report)
+    if headroom <= 0:
+        signal = report.get("reserve_signal", "hard_stop")
+        return (
+            False,
+            f"headroom=0 reserve={signal} — pack write refused (reuse-only until week rolls)",
+        )
+    return True, ""
+
+
 def sync_from_ledger(cfg: Optional[AegisConfig] = None) -> Dict[str, Any]:
     """
     Grow wish-jar credits from weekly savings without eating reserve.
@@ -57,8 +93,7 @@ def sync_from_ledger(cfg: Optional[AegisConfig] = None) -> Dict[str, Any]:
     gross_saved = int(report["total_tokens_saved"])
     processed = int(report["total_tokens_consumed"])
     cap = int(cfg.weekly_token_cap)
-    reserve_tokens = int(cap * cfg.reserve_floor)
-    headroom = max(0, cap - processed - reserve_tokens)
+    headroom = compute_spend_headroom(cfg, report)
 
     if fund.get("last_sync_week") != week:
         # new week: credit only from this week's savings * rate, capped by headroom

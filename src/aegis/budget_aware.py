@@ -79,7 +79,6 @@ DEFAULT_MODULES: List[ModuleSpec] = [
     ModuleSpec("seed_ideas", cost=0.6, signal_quality=0.4, freshness_need=0.1, consumer_priority=0.2, never_shed=False, tags=["ideas", "bootstrap"]),
     ModuleSpec("memory_capture", cost=0.7, signal_quality=0.6, freshness_need=0.5, consumer_priority=0.5, never_shed=False, tags=["memory"]),
     ModuleSpec("cross_model_memory_inject", cost=0.5, signal_quality=0.65, freshness_need=0.6, consumer_priority=0.55, never_shed=False, tags=["memory"]),
-    ModuleSpec("exploratory_enrichment", cost=2.0, signal_quality=0.35, freshness_need=0.2, consumer_priority=0.15, never_shed=False, tags=["enrichment", "optional"]),
     ModuleSpec(
         "continuity_bridge",
         cost=0.5,
@@ -337,6 +336,25 @@ def plan_for_band(
                 "tags": list(m.tags),
             }
         )
+
+    try:
+        from aegis.config import load_config
+        from aegis.memory_admit import record_stats
+
+        cfg = load_config()
+        stats = record_stats()
+        proposed = int(stats.get("proposed") or 0)
+        cap = int(getattr(cfg, "memory_proposed_max", 200))
+        if proposed > cap and "memory_capture" not in shed:
+            shed.append("memory_capture")
+            stale_ok.append("memory_capture")
+            for row in decisions:
+                if row.get("module") == "memory_capture":
+                    row["action"] = "shed"
+                    row["stale_ok"] = True
+                    row["reason"] = f"proposed_queue={proposed}>{cap}"
+    except Exception:  # noqa: BLE001
+        pass
 
     return {
         "band": band,

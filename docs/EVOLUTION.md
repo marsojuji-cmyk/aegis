@@ -79,3 +79,5 @@ pack/scrub/output → REDUCE
 - [x] **Budget-Aware Mode** — hysteresis SM, module ranking/shed, tick gates, multi-surface fan-out
 - [x] **Continuity Bridge** — emergency handoff report + embedding pack + Cross-AI next steps
 - [x] **v1.2.0** — Master Aegis product OS: kernel, portable home, frozen `/v1`, yield harness
+- [x] **v1.3.0** — Evidence-to-Yield Autonomy: durable claim/outcome provenance, governed decisions, quarantine/reliability circuits, and a calibration gate before live research.
+- [x] **v1.3.1** — Bounded autoscan: allowlisted incremental scanning, reversible quarantine, circuit recovery, and scheduled verification with public research gated closed by default.

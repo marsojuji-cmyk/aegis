@@ -1,0 +1,49 @@
+{
+  "accounting": "counterfactual_chars4",
+  "billed_pairs": {
+    "acceptance_delta": 0.0,
+    "cost_comparison_complete": true,
+    "mean_seconds_saved": 0.53,
+    "observed_cost_pairs": 20,
+    "outcome_decision": "eligible for routing trial",
+    "paired_tasks": 20,
+    "routing_authorized": true,
+    "routing_scope": "tiny_chat",
+    "savings_percent": 41.3,
+    "total_cost_usd_saved": 0.000414,
+    "workflow": "matched_provider_pairs"
+  },
+  "captured_at": "2026-08-20",
+  "ledger_reduction_percent_local": 32.2,
+  "ledger_tokens_consumed": 2770103,
+  "ledger_tokens_saved_local": 1313935,
+  "note": "Publication evidence is frozen at press time. savings_percent is observed billed USD on matched_provider_pairs. Ledger reduction is a chars/4 counterfactual. Implement-pack routing is off; implement packs stay on the requested model.",
+  "ok": true,
+  "routing_authorized": true,
+  "routing_scope": "tiny_chat",
+  "savings_percent": 41.3,
+  "savings_percent_accounting": "observed_billed_usd",
+  "schema_version": 1,
+  "snapshot_id": "aegis-publication-2026-08-20",
+  "source": "aegis.yield_proof.yield_report",
+  "workflow_compare": [
+    {
+      "decision": "withhold: 5/10 matched tasks; routing evidence is insufficient",
+      "observed_cost_pairs": 5,
+      "paired_tasks": 5,
+      "routing_authorized": false,
+      "savings_percent": -2472.8,
+      "total_cost_usd_saved": -0.006182,
+      "workflow": "aegis_pack_scale"
+    },
+    {
+      "decision": "withhold: 5/10 matched tasks; routing evidence is insufficient",
+      "observed_cost_pairs": 5,
+      "paired_tasks": 5,
+      "routing_authorized": false,
+      "savings_percent": -394.3,
+      "total_cost_usd_saved": -0.000986,
+      "workflow": "coding_prompt_scale"
+    }
+  ]
+}

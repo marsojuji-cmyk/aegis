@@ -205,6 +205,52 @@ def _product_os_checks() -> List[Check]:
     ]
 
 
+def _release_program_checks() -> List[Check]:
+    """Release floor: autonomy off, no fake savings. Reuse rate is a cue, not a fail."""
+    try:
+        from aegis.config import load_config, opt_in
+        from aegis.ledger import generate_report
+        from aegis.yield_proof import yield_is_honest, yield_report
+
+        cfg = load_config()
+        flags = ("auto_tick", "auto_invest", "auto_apply_fixes", "auto_memory")
+        armed = [n for n in flags if opt_in(cfg, n)]
+        yld = yield_report()
+        honest = yield_is_honest(yld)
+        try:
+            rate = float((generate_report() or {}).get("reuse_hit_rate_percent") or 0)
+        except Exception:  # noqa: BLE001
+            rate = 0.0
+        return [
+            (
+                "freeze_autonomy",
+                not armed,
+                "off" if not armed else "armed=" + ",".join(armed),
+            ),
+            (
+                "yield_honest",
+                honest,
+                (
+                    f"savings_percent={yld.get('savings_percent')} "
+                    f"ledger_saved={yld.get('ledger_tokens_saved_local')} "
+                    f"billed_Δusd={(yld.get('billed_pairs') or {}).get('total_cost_usd_saved')} "
+                    f"admitted={yld.get('admitted_pair')}"
+                ),
+            ),
+            (
+                "reuse_cue",
+                True,
+                f"week={rate}% target≥50 — covering reuse only when file hashes match",
+            ),
+        ]
+    except OSError as exc:
+        return [
+            ("freeze_autonomy", False, f"home not writable ({exc})"),
+            ("yield_honest", False, "skipped"),
+            ("reuse_cue", True, "skipped"),
+        ]
+
+
 def run_checks() -> List[Check]:
     checks: List[Check] = []
     engine = get_engine_name()
@@ -462,6 +508,7 @@ def run_checks() -> List[Check]:
     )
     checks.append(("packs_dir", True, str(packs_dir())))
     checks.extend(_product_os_checks())
+    checks.extend(_release_program_checks())
     checks.append(hermes_corpus_check())
 
     exp = expense_report_path()
@@ -533,6 +580,8 @@ def doctor_report() -> Dict[str, Any]:
         "aegis_home",
         "product_engines",
         "cli_entry",
+        "freeze_autonomy",
+        "yield_honest",
     }
     product_failed = [
         c for c in checks if c[0] in product_names and not c[1]
@@ -540,7 +589,7 @@ def doctor_report() -> Dict[str, Any]:
     return {
         "ok": len(failed) == 0,
         "product_ready": len(product_failed) == 0,
-        "epoch": "1.2",
+        "epoch": "1.3",
         "version": __version__,
         "summary": (
             f"v{__version__} ready" if not failed else f"{len(failed)} check(s) failed"
@@ -553,7 +602,7 @@ def doctor_report() -> Dict[str, Any]:
 def format_doctor_text(report: Dict[str, Any]) -> str:
     lines = [
         "Aegis doctor",
-        f"  epoch:   {report['epoch']} (v1.2 Master Aegis product OS)",
+        f"  epoch:   {report['epoch']} (v1.3 Evidence-to-Yield Autonomy)",
         f"  version: {report.get('version', __version__)}",
         f"  status:  {report['summary']}",
         "",
@@ -582,3 +631,38 @@ def format_doctor_text(report: Dict[str, Any]) -> str:
             "Fix FAIL items, or export AEGIS_ENGINE=legacy and restore scratch path."
         )
     return "\n".join(lines)
+
+
+def release_report() -> Dict[str, Any]:
+    """Buyer/operator gate for the local program. Does not thaw freezes."""
+    from aegis.decisions import health as decisions_health
+    from aegis.modules import health as modules_health
+
+    doctor = doctor_report()
+    decisions = decisions_health()
+    modules = modules_health()
+    product = bool(doctor.get("product_ready"))
+    ok = product and bool(decisions.get("ok")) and bool(modules.get("ok"))
+    reuse = next(
+        (c for c in doctor.get("checks") or [] if c.get("name") == "reuse_cue"),
+        {},
+    )
+    return {
+        "ok": ok,
+        "product_ready": product,
+        "decisions_ok": bool(decisions.get("ok")),
+        "modules_ok": bool(modules.get("ok")),
+        "repair": {
+            "doctor": [
+                c["name"]
+                for c in doctor.get("checks") or []
+                if c.get("name") in {"freeze_autonomy", "yield_honest"} and not c.get("pass")
+            ],
+            "decisions": list(decisions.get("repair") or []),
+            "modules": list(modules.get("repair") or []),
+        },
+        "reuse": reuse.get("detail"),
+        "savings_percent": None,
+        "version": doctor.get("version"),
+        "doctor": doctor,
+    }

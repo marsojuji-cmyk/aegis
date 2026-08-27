@@ -1,6 +1,6 @@
 # Sprint Board
 
-Product `1.2.0`. Operational SoT: `~/.aegis/sprints.jsonl`.
+Product `1.3.1`. Operational SoT: `~/.aegis/sprints.jsonl`.
 This file is the human index. Registers remain authoritative for D/R/Q.
 
 | ID | Status | Title | Blocked by | Links |
@@ -21,6 +21,10 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 | SP-020 | done | Factory OS MUL graph + validation | — | D-030 |
 | SP-021 | done | Master Aegis 1.2.0 product OS | — | D-031 |
 | SP-022 | done | Close 1.2.0 working tree in one-intent units | — | — |
+| SP-023 | done | Covering reuse + os ready | — | D-032 |
+| SP-024 | done | Agency modes, observability relay, sentinel capsule fields, memory mesh tiers | — | — |
+| SP-025 | done | Retire Ether competing Hermes farm | — | — |
+| SP-026 | done | Sprint ledger reconciliation + version alignment | — | — |
 
 ## Detail
 
@@ -145,3 +149,31 @@ This file is the human index. Registers remain authoritative for D/R/Q.
 - T-1 [done]: Land D-030 remainder (frontmatter + factory OS validation test)
 - T-2 [done]: Land outcomes honesty (untrusted cost_source)
 - T-3 [done]: Classify leftover dirty files; keep or drop
+
+### SP-023 — Covering reuse + os ready
+
+- status: `done`
+- goal: Make reuse the release lever without new modules or fake savings.
+- verified: subset pack hits; edit is a miss; freeze+yield on doctor --product; aegis os ready.
+- evidence: git 7ff9fda; tests/test_reuse_and_surplus.py, tests/test_cursor_bridge.py, tests/test_master_os.py
+
+### SP-024 — Agency modes, observability relay, sentinel capsule fields, memory mesh tiers
+
+- status: `done`
+- goal: Add the bounded agency, relay, sentinel, and two-tier memory capabilities recorded in the canonical register.
+- verified: commit b6afbda added the implementation and associated tests.
+- evidence: git b6afbda; tests/test_memory_admit.py, tests/test_relay.py, tests/test_context_governor.py
+
+### SP-025 — Retire Ether competing Hermes farm
+
+- status: `done`
+- goal: APP-ETHER-HERMES-RETIRE-2026-08-27: inventory, preserve, stop farm, disable gateway hook. No chown tmp, no ektar, no D-011 thaw, no production guard change, no git push.
+- verified: Ether Hermes farm stopped (app=0 python=0). Gateway hook ai.hermes.gateway-hermes-nexus disabled. Primary a100 Hermes.app 79982 + doctor ok + hermes_corpus 32 + search hit Memory Utility Labs.md. Exclusions held: tmp owner ether, ektar untouched, D-011 frozen, config sha256 unchanged, no git push.
+- evidence: /Users/a100/.aegis/retirements/APP-ETHER-HERMES-RETIRE-2026-08-27 RESULT.json ROLLBACK.md disabled.508.plist ai.hermes.gateway-hermes-nexus=true
+
+### SP-026 — Sprint ledger reconciliation + version alignment
+
+- status: `done`
+- goal: SP-023/024/025 identity correction, reconcile CLI, setup.py 1.3.1, register/board sync, continuity addendum
+- verified: reconcile_known_history + audit ledger; aegis sprint reconcile CLI; setup.py 1.3.1; board/register sync; continuity addendum
+- evidence: git 1f1a0d5; pytest 444 passed; doctor v1.3.1 ready; sprint report SP-023/024/025

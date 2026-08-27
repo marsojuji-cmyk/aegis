@@ -37,6 +37,10 @@ class AegisConfig:
     auto_apply_fixes: bool = False
     auto_memory: bool = False
     intel_tick_seconds: int = 300
+    autoscan_interval_seconds: int = 300
+    autoscan_public_interval_seconds: int = 86400
+    autoscan_max_item_bytes: int = 1_000_000
+    autoscan_daily_cost_ceiling_usd: float = 0.0
     min_roi_grade_auto: str = "B"  # only auto-invest A/B ideas
     forecast_horizon_days: int = 7
     # Forecast advice thresholds (no magic numbers in forecast._advice)
@@ -69,6 +73,11 @@ class AegisConfig:
     guard_audit_limit: int = 50
     guard_shadow_mode: bool = True
     guard_signal_shadow_mode: bool = True
+    guard_require_mission_lock: bool = False
+    guard_mission: str = ""
+    guard_agency_mode: str = "assistive"  # reflective | assistive | autonomous
+    guard_require_memory_provenance: bool = False
+    memory_proposed_max: int = 200
     # v1 Hermes notes pin. Empty = unset. Never fall through to DEFAULT_ROOT.
     hermes_notes_root: str = ""
 
@@ -90,6 +99,11 @@ class AegisConfig:
 
 
 DEFAULTS = AegisConfig()
+
+
+def opt_in(cfg: Any, name: str) -> bool:
+    """Autonomy flags fail closed. Missing attribute means off."""
+    return bool(getattr(cfg, name, False))
 
 
 def _parse_simple_toml(text: str) -> Dict[str, Any]:
@@ -144,6 +158,10 @@ def _format_toml(cfg: AegisConfig) -> str:
         f"auto_apply_fixes = {str(cfg.auto_apply_fixes).lower()}",
         f"auto_memory = {str(cfg.auto_memory).lower()}",
         f"intel_tick_seconds = {cfg.intel_tick_seconds}",
+        f"autoscan_interval_seconds = {cfg.autoscan_interval_seconds}",
+        f"autoscan_public_interval_seconds = {cfg.autoscan_public_interval_seconds}",
+        f"autoscan_max_item_bytes = {cfg.autoscan_max_item_bytes}",
+        f"autoscan_daily_cost_ceiling_usd = {cfg.autoscan_daily_cost_ceiling_usd}",
         f'min_roi_grade_auto = "{cfg.min_roi_grade_auto}"',
         f"forecast_horizon_days = {cfg.forecast_horizon_days}",
         f"cache_hit_threshold = {cfg.cache_hit_threshold}",
@@ -169,6 +187,12 @@ def _format_toml(cfg: AegisConfig) -> str:
         f'guard_signal_preserve_keywords = "{cfg.guard_signal_preserve_keywords}"',
         f"guard_audit_limit = {cfg.guard_audit_limit}",
         f"guard_shadow_mode = {str(cfg.guard_shadow_mode).lower()}",
+        f"guard_signal_shadow_mode = {str(cfg.guard_signal_shadow_mode).lower()}",
+        f"guard_require_mission_lock = {str(cfg.guard_require_mission_lock).lower()}",
+        f'guard_mission = "{cfg.guard_mission}"',
+        f'guard_agency_mode = "{cfg.guard_agency_mode}"',
+        f"guard_require_memory_provenance = {str(cfg.guard_require_memory_provenance).lower()}",
+        f"memory_proposed_max = {cfg.memory_proposed_max}",
         f'hermes_notes_root = "{cfg.hermes_notes_root}"',
         "",
     ]

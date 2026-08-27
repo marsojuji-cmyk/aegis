@@ -280,9 +280,11 @@ def _layer_score(name: str, status: Dict[str, Any], mem: Dict[str, Any]) -> Dict
         "throttle",
         "hard_stop",
     }
-    from aegis.yield_proof import admitted_pair_present, ACCOUNTING
+    from aegis.yield_proof import ACCOUNTING, yield_report
 
-    yield_score = 10 if admitted_pair_present() else 8
+    yld = yield_report()
+    admitted = bool(yld.get("admitted_pair"))
+    yield_score = 10 if admitted else 8
     return {
         "kernel": {
             "score": 10 if drv_ok and sys_ok else 7,
@@ -309,9 +311,14 @@ def _layer_score(name: str, status: Dict[str, Any], mem: Dict[str, Any]) -> Dict
         "proven_yield": {
             "score": yield_score,
             "evidence": ACCOUNTING,
-            "savings_percent": None,
-            "admitted_pair": admitted_pair_present(),
-            "gap": "" if admitted_pair_present() else "live admitted pair still parked (D-015/D-016)",
+            "savings_percent": yld.get("savings_percent"),
+            "admitted_pair": admitted,
+            "ledger_tokens_saved_local": yld.get("ledger_tokens_saved_local"),
+            "ledger_reduction_percent_local": yld.get("ledger_reduction_percent_local"),
+            "billed_pairs": yld.get("billed_pairs"),
+            "routing_authorized": yld.get("routing_authorized"),
+            "routing_scope": yld.get("routing_scope"),
+            "gap": "" if admitted else "live admitted Hermes pair still parked (D-015/D-016)",
         },
         "memory_rss_bytes": mem.get("rss_bytes"),
         "home": mem.get("home"),
