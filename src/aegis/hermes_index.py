@@ -88,12 +88,19 @@ def _is_text(path: Path) -> bool:
 
 
 def _wrapper(domains: Sequence[str]) -> HermesWrapper:
-    # Batch index only. Does not write production config.toml.
+    # Batch index only. Path allowlist still binds. Does not write production
+    # config.toml. Isolate from live mission-lock (filename drift quarantine)
+    # and from guard_max_output_length / signal prune (whitespace-collapse
+    # + truncate rewrites note bodies and content hashes).
     scoped = replace(
         load_config(),
         guard_allowed_domains=",".join(domains),
         guard_max_tool_calls=10_000,
         guard_max_velocity_calls_per_min=10_000,
+        guard_require_mission_lock=False,
+        guard_mission="Index the pinned Hermes notes corpus under the allowed root.",
+        guard_max_output_length=2_000_000,
+        guard_signal_shadow_mode=True,
     )
     return HermesWrapper(scoped, AegisGuard(scoped))
 

@@ -391,7 +391,9 @@ class HermesWrapper:
             result.ok = False
             result.executed = False
             result.output = None
-            result.reason = f"{result.reason}; execute error: {type(exc).__name__}"
+            detail = " ".join(str(exc).split())[:160]
+            suffix = f"{type(exc).__name__}: {detail}" if detail else type(exc).__name__
+            result.reason = f"{result.reason}; execute error: {suffix}"
             self._audit(result, req)
             return result.as_dict()
 
