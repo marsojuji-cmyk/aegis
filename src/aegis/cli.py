@@ -241,6 +241,13 @@ def _cmd_pack(args: argparse.Namespace) -> int:
             return 3
         return 0
 
+    from aegis.fund import pack_write_allowed
+
+    allowed, refuse_reason = pack_write_allowed(reuse=False)
+    if not allowed:
+        print(f"aegis pack: {refuse_reason}", file=sys.stderr)
+        return 4
+
     use_legacy = getattr(args, "legacy", False)
     if use_legacy:
         mods = load_legacy_modules()

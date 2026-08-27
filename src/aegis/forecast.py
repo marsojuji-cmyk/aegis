@@ -286,5 +286,8 @@ def _advice(
     burn_msg = burn_warning_message(avg_daily_burn, safe_daily, cfg)
     if burn_msg:
         tips.append(burn_msg)
-    tips.append(f"Stay ≤ {safe_daily:.0f} processed tokens/day to protect reserve.")
+    if safe_daily <= 0:
+        tips.append("No spend headroom — reuse-only until week rolls.")
+    else:
+        tips.append(f"Stay ≤ {safe_daily:.0f} processed tokens/day to protect reserve.")
     return tips

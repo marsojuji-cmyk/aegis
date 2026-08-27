@@ -224,11 +224,19 @@ def burn_status(
     avg = _safe_float(forecast.get("avg_daily_burn") or usage.get("avg_daily_burn"))
     safe = _safe_float(forecast.get("recommended_daily_budget"))
     ratio = burn_ratio(avg, safe)
-    level = level_for_ratio(ratio, cfg) if safe > 0 else "ok"
-    msg = message_for_level(
-        level, avg_daily_burn=avg, safe_daily=safe, ratio=ratio, cfg=cfg
-    )
-    fix = fix_for_level(level)
+    if safe <= 0:
+        level = "critical"
+        msg = (
+            f"No spend headroom: safe_daily=0 tok/day "
+            f"(reserve floor reached). Reuse-only until week rolls."
+        )
+        fix = fix_for_level("critical")
+    else:
+        level = level_for_ratio(ratio, cfg)
+        msg = message_for_level(
+            level, avg_daily_burn=avg, safe_daily=safe, ratio=ratio, cfg=cfg
+        )
+        fix = fix_for_level(level)
 
     caution_m = float(getattr(cfg, "burn_caution_multiplier", 0.80) or 0.80)
     warn_m = float(getattr(cfg, "burn_warn_multiplier", 1.00) or 1.00)
@@ -277,7 +285,7 @@ def burn_status(
         }
 
     return {
-        "ok": True,
+        "ok": safe > 0 and level == "ok",
         "ts": _now(),
         "week": forecast.get("week") or usage.get("week"),
         "level": level,
