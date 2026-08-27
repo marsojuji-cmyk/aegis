@@ -2102,6 +2102,7 @@ def _cmd_sprint(args: argparse.Namespace) -> int:
         get_sprint,
         list_sprints,
         park_sprint,
+        reconcile_known_history,
         report,
         unpark_sprint,
         seed_board,
@@ -2222,6 +2223,18 @@ def _cmd_sprint(args: argparse.Namespace) -> int:
         else:
             print(f"wrote {dest}")
         return 0
+    if action == "reconcile":
+        result = reconcile_known_history()
+        if args.json:
+            print(json.dumps(result, indent=2))
+        elif result.get("ok"):
+            print(
+                f"reconciled ids={','.join(result['ids'])} "
+                f"audit={result['audit_path']}"
+            )
+        else:
+            print(f"reconcile failed: {result.get('error')}", file=sys.stderr)
+        return 0 if result.get("ok") else 2
     print(f"unknown sprint action {action}", file=sys.stderr)
     return 2
 
@@ -3337,6 +3350,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp_board.add_argument("--write", default="")
     sp_board.add_argument("--json", action="store_true")
     sp_board.set_defaults(func=_cmd_sprint)
+    sp_reconcile = sp_sub.add_parser(
+        "reconcile",
+        help="One-time SP-023/024/025 identity correction (idempotent)",
+    )
+    sp_reconcile.add_argument("--json", action="store_true")
+    sp_reconcile.set_defaults(func=_cmd_sprint)
 
     hm = sub.add_parser("hermes", help="Read-only Hermes search/resolve")
     hm_sub = hm.add_subparsers(dest="hermes_action", required=True)

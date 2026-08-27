@@ -1,7 +1,7 @@
 # Canonical Register
 
 Index only. Detail lives in the specialized file named by each ID.
-Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
+Updated: 2026-08-27. Reconciled against the durable sprint ledger; historical entries preserved.
 
 ## Decisions (02_DECISION_LOG.md)
 
@@ -74,7 +74,7 @@ Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 | SP-011 | blocked | Q-011 hard-block (D-011). |
 | SP-012 | parked | Q-013 encoder (locked-observe). |
 | SP-013 | done | Capsule artifacts pack_id (D-026). |
-| SP-014 | done | memory_admit + memory_records.jsonl; R-015 mitigated for Aegis durable tier. |
+| SP-014 | blocked | R-015 memory domain scope remains blocked; durable-memory admission is partial mitigation. |
 | SP-024 | done | Agency modes, observability relay, sentinel capsule fields, memory mesh tiers. |
 | SP-015 | done | Cursor pack-first gate + hit/miss receipt. |
 | SP-016 | done | Empty continuity pack fails closed. |
@@ -84,6 +84,7 @@ Updated: 2026-08-18. Empty file filled from existing evidence (R-013).
 | SP-020 | done | Factory OS MUL graph + adversarial validation (D-030). |
 | SP-021 | done | Master Aegis 1.2.0 product OS (D-031). |
 | SP-023 | done | Release program: covering reuse + os ready (D-032). |
+| SP-025 | done | Retire Ether competing Hermes farm; original erroneous SP-023 ledger row preserved in reconciliation audit. |
 
 ## Modules (`aegis modules health`)
 
