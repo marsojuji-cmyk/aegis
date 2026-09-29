@@ -13,7 +13,7 @@ authors = [{ name = "Aegis" }]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+dev = ["pytest>=9.1.1"]
 treesitter = [
     "tree-sitter>=0.21",
     "tree-sitter-python",
