@@ -15,7 +15,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=9.1.1"]
 treesitter = [
-    "tree-sitter>=0.21",
+    "tree-sitter>=0.26.0",
     "tree-sitter-python",
     "tree-sitter-javascript",
     "tree-sitter-typescript",
